@@ -1,7 +1,7 @@
 # Plan 04: Dedupe store
 
 Spec: [04-dedupe-store](../spec/04-dedupe-store.md)
-Status: approved 2026-10-20
+Status: done 2026-10-20 (tasks 1–7; decision records 0016–0022)
 
 ## Decisions for this plan (asked 2026-10-20)
 

@@ -19,8 +19,10 @@ from jobhunt.sources.raw import RawPayload
 from jobhunt.store.fingerprint import fingerprint
 
 JobStatus = Literal["new", "updated", "unchanged"]
-# Fields that differ between sightings of the same job; ignored when comparing content.
-_SIGHTING_FIELDS = frozenset({"collected_at", "raw_ref", "parser"})
+# Ignored when deciding whether a job changed: fields that differ between sightings of the
+# same job, and `extra`, which core logic never reads (spec 01) and which holds per-sighting
+# details such as the alert-email kind (decision 0022).
+_NOT_CONTENT = frozenset({"collected_at", "raw_ref", "parser", "extra"})
 
 
 @dataclass(frozen=True)
@@ -96,7 +98,8 @@ def plan_upsert(existing: StoredJob | None, job: Job) -> tuple[StoredJob, JobSta
 
     - first_seen_at only moves earlier, last_seen_at only later.
     - Output from an older version of the same parser never replaces newer output.
-    - Same content (ignoring collected_at, raw_ref, parser): the first sighting's data is kept.
+    - Same content (ignoring collected_at, raw_ref, parser, extra): the first sighting's data
+      is kept.
     """
     seen = job.collected_at
     if existing is None:
@@ -125,7 +128,7 @@ def _semver(version: str) -> tuple[int, ...]:
 
 
 def _content(job: Job) -> dict[str, object]:
-    return job.model_dump(mode="json", exclude=set(_SIGHTING_FIELDS))
+    return job.model_dump(mode="json", exclude=set(_NOT_CONTENT))
 
 
 def group_postings(jobs: Iterable[StoredJob]) -> list[Posting]:

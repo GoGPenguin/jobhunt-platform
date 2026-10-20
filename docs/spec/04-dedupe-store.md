@@ -70,7 +70,7 @@ dead_letters      (id PK, source, raw_ref, parser_name, parser_version, errors j
 1. Raw payload: insert; an existing `raw_ref` is left as is.
 2. Each job: insert, or update on `(source, external_id)`:
    - `first_seen_at` only ever moves earlier (an older sighting can arrive late) and `last_seen_at` only later; both come from the job's `collected_at`.
-   - `data` is replaced only if the new parser version is the same or newer (semver), so an old version running during a rollout can't overwrite newer output. `updated_at` changes only when the content changes; `collected_at`, `raw_ref` and `parser` don't count as content, so a repeat sighting is `unchanged` and keeps the first sighting's data.
+   - `data` is replaced only if the new parser version is the same or newer (semver), so an old version running during a rollout can't overwrite newer output. `updated_at` changes only when the content changes; `collected_at`, `raw_ref`, `parser` and `extra` don't count as content (`extra` is never read by core logic and holds per-sighting details such as the alert-email kind; decided 2026-10-20), so a repeat sighting is `unchanged` and keeps the first sighting's data.
    - Reported per job as `new`, `updated` or `unchanged`.
 3. Dead letters: appended.
 

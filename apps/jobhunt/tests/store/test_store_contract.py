@@ -87,6 +87,17 @@ def test_same_job_in_two_emails(store: JobStore) -> None:
     assert stored.job.raw_ref == first_raw.raw_ref  # content unchanged: first sighting kept
 
 
+def test_extra_alone_is_not_a_change(store: JobStore) -> None:
+    first_raw, second_raw = payload(1), payload(2)
+    store.store(first_raw, result(first_raw, record(extra={"email_kind": "Viewed Jobs"})))
+    other_email = record(extra={"email_kind": "Jobs You Might Be Interested In", "badges": ["x"]})
+    outcome = store.store(second_raw, result(second_raw, other_email))
+    assert outcome.counts == {"unchanged": 1}
+    stored = store.get_job("test-source", "4012345")
+    assert stored is not None
+    assert stored.job.extra == {"email_kind": "Viewed Jobs"}  # first sighting kept
+
+
 def test_last_seen_never_goes_back(store: JobStore) -> None:
     late_raw, early_raw = payload(1), payload(2)
     late = T0 + timedelta(days=2)
