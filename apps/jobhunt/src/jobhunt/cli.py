@@ -6,6 +6,7 @@
     jobhunt digest send [--test] | list [--since 7d]
     jobhunt telegram find-chat
     jobhunt timer install --uv PATH --repo PATH [--at 12:00] | remove
+    jobhunt profile check
 
 stdout gets one JSON object per line ({"type": "job" | "dead_letter" | "posting" | "summary",
 ...}); logs and errors go to stderr with every known secret redacted. Exit codes: 0 ok, 2 config
@@ -34,7 +35,7 @@ from jobhunt.notify import timer as daily_timer
 from jobhunt.notify.digest import compose
 from jobhunt.notify.telegram import DEFAULT_API_BASE, TelegramClient, TelegramError
 from jobhunt.pipeline import process_payloads
-from jobhunt.profile.load import PREFERENCES
+from jobhunt.profile.load import MASTER_CV, PREFERENCES, load_profile
 from jobhunt.profile.preferences import load_preferences
 from jobhunt.sources.config import EmailSection, load_sources
 from jobhunt.sources.imap import ImapClient, TransportError, connect_ssl, fetch_emails
@@ -117,6 +118,8 @@ def main(
             return run.find_chat(open_telegram)
         if args.command == "timer":
             return run.timer(args.action)
+        if args.command == "profile":
+            return run.profile_check()
         return run.collect_email(connect)
     except DigestBusyError as exc:
         log.error("%s; try again when it has finished", exc)
@@ -286,6 +289,30 @@ class _Run:
             log.warning("no chats yet: send your bot any message in Telegram, then run this again")
         return EXIT_OK
 
+    def profile_check(self) -> int:
+        """Validate master_cv.yaml, preferences.yaml and the aliases. Messages name entries by
+        location, never the values: the CV is private and the output may be shared."""
+        errors: list[str] = []
+        warnings: list[str] = []
+        if not (self.config_dir / MASTER_CV).exists():
+            errors.append(f"{self.config_dir / MASTER_CV}: not found")
+        if not (self.config_dir / PREFERENCES).exists():
+            warnings.append(f"{self.config_dir / PREFERENCES}: not found, using defaults")
+        try:
+            profile = load_profile(self.config_dir)
+        except ConfigError as exc:
+            errors += [line.strip() for line in str(exc).splitlines()[1:]] or [str(exc)]
+        else:
+            errors += profile.issues()
+            warnings += profile.warnings()
+        for message in errors:
+            log.error("%s", message)
+        for message in warnings:
+            log.warning("%s", message)
+        summary = {"type": "summary", "errors": len(errors), "warnings": len(warnings)}
+        sys.stdout.write(json.dumps(summary) + "\n")
+        return EXIT_CONFIG if errors else EXIT_OK
+
     def timer(self, action: str) -> int:
         unit_dir: Path = self.args.unit_dir
         if action == "remove":
@@ -381,6 +408,9 @@ def _arguments() -> argparse.ArgumentParser:
     timer.add_argument("--repo", type=Path, help="install: absolute path of this repository")
     timer.add_argument("--at", default="12:00", help="install: local time HH:MM (default 12:00)")
     timer.add_argument("--unit-dir", type=Path, default=daily_timer.DEFAULT_UNIT_DIR)
+
+    profile = commands.add_parser("profile", parents=[common], help="the master CV and preferences")
+    profile.add_argument("action", choices=["check"], help="validate both files and the aliases")
     return parser
 
 
