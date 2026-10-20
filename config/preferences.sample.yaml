@@ -1,0 +1,44 @@
+# Sample preferences (fictional). Copy to ~/.config/jobhunt/preferences.yaml and edit.
+# Schema: schemas/preferences.v1.json. Nothing about a profession is hardcoded in the code:
+# targets, markets and filters all come from this file (constitution guardrail 5).
+schema_version: 1
+
+candidate:
+  location: { city: Da Nang, country: VN }
+  timezone: Asia/Ho_Chi_Minh
+
+looking_for: >-
+  Platform or SRE work on Kubernetes in an English-speaking team, in Da Nang or remote within
+  APAC, with room to grow towards on-call and observability ownership.
+
+targets:
+  roles: [Platform Engineer, Site Reliability Engineer, DevOps Engineer]
+  role_keywords: [platform, sre, devops, infrastructure]
+  seniority: [junior, mid]
+  years_experience_max: 4
+
+# In priority order: the first market is the most preferred.
+markets:
+  - name: vietnam
+    countries: [VN]
+    workplace: [onsite, hybrid, remote]
+  - name: asia
+    countries: [SG, JP]
+    regions: [APAC]
+    workplace: [onsite, hybrid, remote]
+    prefer: English-speaking workplace
+  - name: global-remote
+    regions: [WORLDWIDE, APAC]
+    workplace: [remote]
+
+filters:
+  drop_remote_outside_eligibility: true
+  excluded_companies: [Fabrikam]
+  excluded_keywords: [sales, PHP]
+  minimum_salary:
+    - { amount: 20000000, currency: VND, period: month }
+    - { amount: 30000, currency: USD, period: year }
+
+languages:
+  postings: [vi, en]
+  outputs: [en, vi]

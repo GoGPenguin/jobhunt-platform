@@ -1,0 +1,358 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Candidate": {
+      "additionalProperties": false,
+      "properties": {
+        "location": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CandidateLocation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "timezone": {
+          "default": "UTC",
+          "title": "Timezone",
+          "type": "string"
+        }
+      },
+      "title": "Candidate",
+      "type": "object"
+    },
+    "CandidateLocation": {
+      "additionalProperties": false,
+      "properties": {
+        "city": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "City"
+        },
+        "country": {
+          "pattern": "^[A-Z]{2}$",
+          "title": "Country",
+          "type": "string"
+        }
+      },
+      "required": [
+        "country"
+      ],
+      "title": "CandidateLocation",
+      "type": "object"
+    },
+    "Filters": {
+      "additionalProperties": false,
+      "properties": {
+        "drop_remote_outside_eligibility": {
+          "default": true,
+          "title": "Drop Remote Outside Eligibility",
+          "type": "boolean"
+        },
+        "excluded_companies": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Excluded Companies",
+          "type": "array"
+        },
+        "excluded_keywords": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Excluded Keywords",
+          "type": "array"
+        },
+        "minimum_salary": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/MinimumSalary"
+          },
+          "title": "Minimum Salary",
+          "type": "array"
+        }
+      },
+      "title": "Filters",
+      "type": "object"
+    },
+    "Languages": {
+      "additionalProperties": false,
+      "properties": {
+        "postings": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Postings"
+        },
+        "outputs": {
+          "default": [
+            "en"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "title": "Outputs",
+          "type": "array"
+        }
+      },
+      "title": "Languages",
+      "type": "object"
+    },
+    "Market": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z0-9][a-z0-9-]{0,49}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "countries": {
+          "default": [],
+          "items": {
+            "pattern": "^[A-Z]{2}$",
+            "type": "string"
+          },
+          "title": "Countries",
+          "type": "array"
+        },
+        "regions": {
+          "default": [],
+          "items": {
+            "pattern": "^[A-Z][A-Z0-9_]{1,31}$",
+            "type": "string"
+          },
+          "title": "Regions",
+          "type": "array"
+        },
+        "workplace": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Workplace"
+          },
+          "title": "Workplace",
+          "type": "array"
+        },
+        "prefer": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Prefer"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "Market",
+      "type": "object"
+    },
+    "MinimumSalary": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Amount"
+        },
+        "currency": {
+          "pattern": "^[A-Z]{3}$",
+          "title": "Currency",
+          "type": "string"
+        },
+        "period": {
+          "enum": [
+            "year",
+            "month",
+            "week",
+            "day",
+            "hour"
+          ],
+          "title": "Period",
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount",
+        "currency",
+        "period"
+      ],
+      "title": "MinimumSalary",
+      "type": "object"
+    },
+    "Seniority": {
+      "enum": [
+        "intern",
+        "junior",
+        "mid",
+        "senior",
+        "lead",
+        "staff_plus",
+        "unknown"
+      ],
+      "title": "Seniority",
+      "type": "string"
+    },
+    "Targets": {
+      "additionalProperties": false,
+      "properties": {
+        "roles": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Roles",
+          "type": "array"
+        },
+        "role_keywords": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Role Keywords",
+          "type": "array"
+        },
+        "seniority": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Seniority"
+          },
+          "title": "Seniority",
+          "type": "array"
+        },
+        "years_experience_max": {
+          "anyOf": [
+            {
+              "maximum": 30,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Years Experience Max"
+        }
+      },
+      "title": "Targets",
+      "type": "object"
+    },
+    "Workplace": {
+      "enum": [
+        "onsite",
+        "hybrid",
+        "remote",
+        "unknown"
+      ],
+      "title": "Workplace",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "candidate": {
+      "$ref": "#/$defs/Candidate",
+      "default": {
+        "location": null,
+        "timezone": "UTC"
+      }
+    },
+    "looking_for": {
+      "anyOf": [
+        {
+          "maxLength": 1000,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Looking For"
+    },
+    "targets": {
+      "$ref": "#/$defs/Targets",
+      "default": {
+        "roles": [],
+        "role_keywords": [],
+        "seniority": [],
+        "years_experience_max": null
+      }
+    },
+    "markets": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Market"
+      },
+      "title": "Markets",
+      "type": "array"
+    },
+    "filters": {
+      "$ref": "#/$defs/Filters",
+      "default": {
+        "drop_remote_outside_eligibility": true,
+        "excluded_companies": [],
+        "excluded_keywords": [],
+        "minimum_salary": []
+      }
+    },
+    "languages": {
+      "$ref": "#/$defs/Languages",
+      "default": {
+        "postings": null,
+        "outputs": [
+          "en"
+        ]
+      }
+    }
+  },
+  "title": "Preferences",
+  "type": "object"
+}

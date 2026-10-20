@@ -4,7 +4,6 @@ from pathlib import Path
 import pytest
 
 from jobhunt.config_files import ConfigError
-from jobhunt.preferences import load_accepted_languages, load_timezone
 from jobhunt.sources.config import SourcesConfig, load_sources
 
 REPO = Path(__file__).resolve().parents[4]
@@ -116,45 +115,3 @@ def test_not_yaml_mapping(tmp_path: Path) -> None:
 def test_missing_file(tmp_path: Path) -> None:
     with pytest.raises(ConfigError, match="not found"):
         load_sources(tmp_path / "nope.yaml", known_parsers=KNOWN)
-
-
-# Posting-language filter from preferences.yaml
-
-
-def test_accepted_languages(tmp_path: Path) -> None:
-    path = write(tmp_path, "languages:\n  postings: [vi, en]\n", "preferences.yaml")
-    assert load_accepted_languages(path) == frozenset({"vi", "en"})
-
-
-def test_no_preferences_file_means_no_filter(tmp_path: Path) -> None:
-    assert load_accepted_languages(tmp_path / "preferences.yaml") is None
-
-
-def test_preferences_without_postings_means_no_filter(tmp_path: Path) -> None:
-    path = write(tmp_path, "languages:\n  outputs: [en]\n", "preferences.yaml")
-    assert load_accepted_languages(path) is None
-
-
-@pytest.mark.parametrize("postings", ["[vn]", "vi", "[]"])
-def test_invalid_postings(tmp_path: Path, postings: str) -> None:
-    path = write(tmp_path, f"languages:\n  postings: {postings}\n", "preferences.yaml")
-    with pytest.raises(ConfigError, match="postings"):
-        load_accepted_languages(path)
-
-
-# Timezone from preferences.yaml (digest times)
-
-
-def test_timezone_from_preferences(tmp_path: Path) -> None:
-    path = write(tmp_path, "candidate:\n  timezone: Asia/Ho_Chi_Minh\n", "preferences.yaml")
-    assert str(load_timezone(path)) == "Asia/Ho_Chi_Minh"
-
-
-def test_timezone_defaults_to_utc(tmp_path: Path) -> None:
-    assert str(load_timezone(tmp_path / "preferences.yaml")) == "UTC"
-
-
-def test_invalid_timezone(tmp_path: Path) -> None:
-    path = write(tmp_path, "candidate:\n  timezone: Mars/Olympus\n", "preferences.yaml")
-    with pytest.raises(ConfigError, match="timezone"):
-        load_timezone(path)

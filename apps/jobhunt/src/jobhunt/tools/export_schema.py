@@ -20,6 +20,7 @@ from jobhunt.domain.dead_letter import DeadLetter
 from jobhunt.domain.job import Job
 from jobhunt.profile.aliases import SkillAliasesFile
 from jobhunt.profile.master_cv import MasterCV
+from jobhunt.profile.preferences import Preferences
 from jobhunt.sources.config import SourcesConfig
 
 JSON_SCHEMA_DIALECT = "https://json-schema.org/draft/2020-12/schema"
@@ -31,6 +32,7 @@ SCHEMAS: dict[str, tuple[type[BaseModel], Literal["serialization", "validation"]
     "sources.v1.json": (SourcesConfig, "validation"),
     "skill_aliases.v1.json": (SkillAliasesFile, "validation"),
     "master_cv.v1.json": (MasterCV, "validation"),
+    "preferences.v1.json": (Preferences, "validation"),
 }
 
 

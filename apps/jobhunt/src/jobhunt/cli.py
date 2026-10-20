@@ -34,7 +34,8 @@ from jobhunt.notify import timer as daily_timer
 from jobhunt.notify.digest import compose
 from jobhunt.notify.telegram import DEFAULT_API_BASE, TelegramClient, TelegramError
 from jobhunt.pipeline import process_payloads
-from jobhunt.preferences import load_accepted_languages, load_timezone
+from jobhunt.profile.load import PREFERENCES
+from jobhunt.profile.preferences import load_preferences
 from jobhunt.sources.config import EmailSection, load_sources
 from jobhunt.sources.imap import ImapClient, TransportError, connect_ssl, fetch_emails
 from jobhunt.sources.raw import RawPayload
@@ -165,7 +166,7 @@ class _Run:
         config = load_sources(sources, known_parsers=REGISTRY.names())
         if config.email is None:
             raise ConfigError(f"{sources}: no email section")
-        return config.email, load_accepted_languages(self.config_dir / "preferences.yaml")
+        return config.email, load_preferences(self.config_dir / PREFERENCES).accepted_languages
 
     def app_conninfo(self) -> str:
         password = load_secrets([APP_PASSWORD], self.env, self.secrets_path)[APP_PASSWORD]
@@ -239,7 +240,7 @@ class _Run:
             ) from None
 
     def digest(self, action: str, open_telegram: OpenTelegram) -> int:
-        tz = load_timezone(self.config_dir / "preferences.yaml")
+        tz = load_preferences(self.config_dir / PREFERENCES).timezone
         if action == "list":
             return self.digest_list(tz)
         telegram, chat = self.telegram(open_telegram), self.chat_id()
@@ -293,7 +294,7 @@ class _Run:
             return EXIT_OK
         if not self.args.uv or not self.args.repo:
             raise ConfigError("timer install needs --uv and --repo (use make install-timer)")
-        tz = load_timezone(self.config_dir / "preferences.yaml")
+        tz = load_preferences(self.config_dir / PREFERENCES).timezone
         written = daily_timer.install_units(
             unit_dir, repo=self.args.repo, uv=self.args.uv, at=self.args.at, tz=tz
         )
