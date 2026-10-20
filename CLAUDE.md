@@ -13,7 +13,8 @@ Personal Kubernetes job-hunt system. Spec-driven: read `docs/spec/` before codin
 - Human approves every application. No auto-submit.
 - Profile-driven: never hardcode roles, skills, markets or keywords; they come from master_cv.yaml and preferences.yaml (outside the repo).
 - Do not add a dependency, source, or service without a spec change.
-- Never read or print secrets. Never run terraform apply/destroy or push without asking.
+- Never read or print secrets. Never run terraform apply/destroy without asking.
+- Commit and push to `main` after each verified task (`make check` passing), so progress is easy to track. Never force-push or rewrite pushed history without asking. The remote is `GoGPenguin/jobhunt-platform`; if `GH_TOKEN` is set for another account, push with `env -u GH_TOKEN git push`.
 
 ## Stack
 
