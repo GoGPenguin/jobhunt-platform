@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "source": "itviec-email",
+  "external_id": "ky-su-devops-junior-song-han-software-1234",
+  "url": "https://itviec.com/it-jobs/ky-su-devops-junior-song-han-software-1234",
+  "title": "Kỹ sư DevOps (Junior)",
+  "company": "Công ty TNHH Phần mềm Sông Hàn",
+  "description": "",
+  "language": "vi",
+  "locations": [{ "city": "Đà Nẵng", "country": "VN" }],
+  "workplace": "unknown",
+  "employment_type": "unknown",
+  "seniority": "unknown",
+  "salary": { "min": "15000000", "max": "25000000", "currency": "VND", "period": "month", "basis": "net" },
+  "tags": [],
+  "collected_at": "2026-10-20T00:30:00Z",
+  "raw_ref": "raw/imap/2026-10-20/msg-8812.eml",
+  "parser": { "name": "itviec-email", "version": "0.1.0" },
+  "extra": { "email_subject": "3 việc làm mới phù hợp với bạn" }
+}

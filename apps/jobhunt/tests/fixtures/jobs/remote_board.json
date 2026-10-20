@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "source": "remotive",
+  "external_id": "1987654",
+  "url": "https://remotive.com/remote-jobs/devops/site-reliability-engineer-1987654",
+  "title": "Site Reliability Engineer",
+  "company": "Northwind Cloud",
+  "description": "Northwind Cloud runs managed databases for 3,000 customers.\n\n- Own our on-call and SLOs\n- Kubernetes and Prometheus",
+  "language": "en",
+  "locations": [],
+  "location_raw": "APAC only",
+  "workplace": "remote",
+  "remote_regions": ["APAC"],
+  "employment_type": "full_time",
+  "seniority": "mid",
+  "tags": ["devops", "kubernetes"],
+  "posted_at": "2026-10-19T12:00:00Z",
+  "collected_at": "2026-10-20T01:05:00Z",
+  "attribution": { "text": "Job listing from Remotive", "url": "https://remotive.com" },
+  "raw_ref": "raw/remotive/2026-10-20/1987654.json",
+  "parser": { "name": "remotive", "version": "1.0.0" },
+  "extra": {}
+}
