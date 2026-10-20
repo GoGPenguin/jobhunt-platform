@@ -19,6 +19,7 @@ from psycopg.conninfo import conninfo_to_dict
 from jobhunt.store.memory import MemoryJobStore
 from jobhunt.store.migrate import bootstrap, migrate
 from jobhunt.store.port import JobStore
+from jobhunt.store.postgres import PostgresJobStore
 from jobhunt.store.settings import APP_ROLE, OWNER_ROLE, DatabaseSettings, conninfo
 
 ADMIN_URL = os.environ.get("JOBHUNT_TEST_DATABASE_ADMIN_URL")
@@ -61,7 +62,11 @@ def pg_database() -> Iterator[ScratchDatabase]:
         conn.execute(drop)
 
 
-@pytest.fixture(params=["memory"])
+@pytest.fixture(params=["memory", "postgres"])
 def store(request: pytest.FixtureRequest) -> Iterator[JobStore]:
     if request.param == "memory":
         yield MemoryJobStore()
+        return
+    db: ScratchDatabase = request.getfixturevalue("pg_database")  # skips without a server
+    with PostgresJobStore(db.app) as postgres:
+        yield postgres
