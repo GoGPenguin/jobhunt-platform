@@ -13,6 +13,7 @@ def test_renders_all_schemas() -> None:
         "dead_letter.v1.json",
         "sources.v1.json",
         "skill_aliases.v1.json",
+        "master_cv.v1.json",
     }
 
 
@@ -59,6 +60,7 @@ def test_write_then_check_passes(tmp_path: Path) -> None:
     assert sorted(p.name for p in tmp_path.iterdir()) == [
         "dead_letter.v1.json",
         "job.v1.json",
+        "master_cv.v1.json",
         "skill_aliases.v1.json",
         "sources.v1.json",
     ]

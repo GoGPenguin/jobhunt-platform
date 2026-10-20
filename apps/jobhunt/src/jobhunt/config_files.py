@@ -1,5 +1,6 @@
 """Reading the YAML files people edit: sources.yaml, preferences.yaml, master_cv.yaml."""
 
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -42,3 +43,26 @@ def read_yaml_mapping(path: Path) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ConfigError(f"{path}: top level must be a mapping")
     return data
+
+
+def describe_location(data: Mapping[str, Any], loc: tuple[int | str, ...]) -> str:
+    """Readable location of a validation error, naming list entries by their id when they
+    have one, e.g. `email.sources[1] (itviec-email).parser`. Never includes the values."""
+    parts: list[str] = []
+    node: Any = data
+    for key in loc:
+        node = _child(node, key)
+        if isinstance(key, int) and parts:
+            entry_id = node.get("id") if isinstance(node, Mapping) else None
+            parts[-1] += f"[{key}]" + (f" ({entry_id})" if entry_id else "")
+        else:
+            parts.append(str(key))
+    return ".".join(parts) or "(top level)"
+
+
+def _child(node: Any, key: int | str) -> Any:
+    if isinstance(node, Mapping):
+        return node.get(key)
+    if isinstance(node, list) and isinstance(key, int) and 0 <= key < len(node):
+        return node[key]
+    return None

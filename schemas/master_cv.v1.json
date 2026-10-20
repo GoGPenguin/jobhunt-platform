@@ -1,0 +1,483 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Certification": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "code": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Code"
+        },
+        "date": {
+          "description": "YYYY-MM",
+          "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+          "title": "Date",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "date"
+      ],
+      "title": "Certification",
+      "type": "object"
+    },
+    "Contact": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "location": {
+          "minLength": 1,
+          "title": "Location",
+          "type": "string"
+        },
+        "email": {
+          "minLength": 1,
+          "title": "Email",
+          "type": "string"
+        },
+        "phone": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Phone"
+        },
+        "linkedin": {
+          "anyOf": [
+            {
+              "pattern": "^https://",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Linkedin"
+        },
+        "languages": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Language"
+          },
+          "title": "Languages",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "location",
+        "email"
+      ],
+      "title": "Contact",
+      "type": "object"
+    },
+    "Education": {
+      "additionalProperties": false,
+      "properties": {
+        "start": {
+          "description": "YYYY-MM",
+          "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+          "title": "Start",
+          "type": "string"
+        },
+        "end": {
+          "anyOf": [
+            {
+              "description": "YYYY-MM",
+              "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End"
+        },
+        "institution": {
+          "minLength": 1,
+          "title": "Institution",
+          "type": "string"
+        },
+        "institution_vi": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Institution Vi"
+        },
+        "degree": {
+          "minLength": 1,
+          "title": "Degree",
+          "type": "string"
+        },
+        "degree_vi": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Degree Vi"
+        },
+        "location": {
+          "minLength": 1,
+          "title": "Location",
+          "type": "string"
+        },
+        "gpa": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gpa"
+        }
+      },
+      "required": [
+        "start",
+        "institution",
+        "degree",
+        "location"
+      ],
+      "title": "Education",
+      "type": "object"
+    },
+    "Experience": {
+      "additionalProperties": false,
+      "properties": {
+        "start": {
+          "description": "YYYY-MM",
+          "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+          "title": "Start",
+          "type": "string"
+        },
+        "end": {
+          "anyOf": [
+            {
+              "description": "YYYY-MM",
+              "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End"
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9-]{0,99}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "company": {
+          "minLength": 1,
+          "title": "Company",
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "title_vi": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title Vi"
+        },
+        "location": {
+          "minLength": 1,
+          "title": "Location",
+          "type": "string"
+        },
+        "projects": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Project"
+          },
+          "title": "Projects",
+          "type": "array"
+        }
+      },
+      "required": [
+        "start",
+        "id",
+        "company",
+        "title",
+        "location"
+      ],
+      "title": "Experience",
+      "type": "object"
+    },
+    "Fact": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9-]{0,99}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "en": {
+          "minLength": 1,
+          "title": "En",
+          "type": "string"
+        },
+        "vi": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vi"
+        },
+        "vi_reviewed": {
+          "default": false,
+          "title": "Vi Reviewed",
+          "type": "boolean"
+        },
+        "skills": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Skills",
+          "type": "array"
+        },
+        "numbers": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Numbers",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "en"
+      ],
+      "title": "Fact",
+      "type": "object"
+    },
+    "Language": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "level": {
+          "minLength": 1,
+          "title": "Level",
+          "type": "string"
+        },
+        "vi": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vi"
+        }
+      },
+      "required": [
+        "name",
+        "level"
+      ],
+      "title": "Language",
+      "type": "object"
+    },
+    "Project": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "description_vi": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description Vi"
+        },
+        "facts": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Fact"
+          },
+          "title": "Facts",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "description"
+      ],
+      "title": "Project",
+      "type": "object"
+    },
+    "Skill": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "category": {
+          "minLength": 1,
+          "title": "Category",
+          "type": "string"
+        },
+        "level": {
+          "default": "working",
+          "enum": [
+            "core",
+            "working",
+            "familiar"
+          ],
+          "title": "Level",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "category"
+      ],
+      "title": "Skill",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "profile": {
+      "$ref": "#/$defs/Contact"
+    },
+    "summary": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Fact"
+      },
+      "title": "Summary",
+      "type": "array"
+    },
+    "skills": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Skill"
+      },
+      "title": "Skills",
+      "type": "array"
+    },
+    "experience": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Experience"
+      },
+      "title": "Experience",
+      "type": "array"
+    },
+    "certifications": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Certification"
+      },
+      "title": "Certifications",
+      "type": "array"
+    },
+    "education": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Education"
+      },
+      "title": "Education",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "profile"
+  ],
+  "title": "MasterCV",
+  "type": "object"
+}

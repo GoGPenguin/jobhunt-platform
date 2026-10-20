@@ -1,0 +1,70 @@
+# Sample master CV (fictional). Copy to ~/.config/jobhunt/master_cv.yaml and replace with your
+# own facts. Schema: schemas/master_cv.v1.json. Generated CVs may only use what is written here
+# (constitution guardrail 2): every skill a fact uses is in `skills` (or an alias of one), and
+# every number a fact uses appears literally in its text.
+schema_version: 1
+
+profile:
+  name: Alex Example
+  location: Da Nang, Vietnam
+  email: alex@example.com
+  phone: "+84 000 000 000"
+  linkedin: https://www.linkedin.com/in/alex-example/
+  languages:
+    - { name: Vietnamese, level: native, vi: "Tiếng Việt (bản ngữ)" }
+    - { name: English, level: "IELTS 7.0", vi: "Tiếng Anh (IELTS 7.0)" }
+
+summary:
+  - id: summary-main
+    en: Platform engineer with 3 years of experience running Kubernetes and AWS infrastructure.
+    vi: Kỹ sư nền tảng với 3 năm kinh nghiệm vận hành hạ tầng Kubernetes và AWS.
+    vi_reviewed: true
+    skills: [Kubernetes, AWS]
+    numbers: ["3"]
+
+skills:
+  - { name: Kubernetes, category: containers, level: core }
+  - { name: Terraform, category: iac, level: core }
+  - { name: AWS, category: cloud, level: working }
+  - { name: AWS EKS, category: cloud, level: working }
+  - { name: Prometheus, category: observability, level: familiar }
+  - { name: Python, category: languages }
+
+experience:
+  - id: exp-contoso
+    company: Contoso Labs
+    title: Platform Engineer
+    title_vi: Kỹ sư nền tảng
+    location: Da Nang, Vietnam
+    start: 2023-06
+    end: null
+    projects:
+      - name: Internal platform
+        description: Kubernetes platform for product teams
+        description_vi: Nền tảng Kubernetes cho các đội sản phẩm
+        facts:
+          - id: contoso-eks-migration
+            en: Migrated 12 services to EKS with Terraform, cutting deployment time by 40%.
+            vi: Chuyển 12 service sang EKS bằng Terraform, giảm 40% thời gian triển khai.
+            vi_reviewed: true
+            skills: [EKS, Terraform]
+            numbers: ["12", "40%"]
+          - id: contoso-alerting
+            en: Built Prometheus alerting for the platform's SLOs.
+            vi: Xây dựng cảnh báo Prometheus cho các SLO của nền tảng.
+            vi_reviewed: false
+            skills: [Prometheus]
+            numbers: []
+
+certifications:
+  - { name: Certified Kubernetes Administrator, code: CKA, date: 2025-11 }
+
+education:
+  - institution: Example University
+    institution_vi: Đại học Ví dụ
+    degree: Computer Science
+    degree_vi: Khoa học Máy tính
+    location: Da Nang, Vietnam
+    start: 2019-09
+    end: 2023-06
+    gpa: "3.5/4.0"

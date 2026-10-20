@@ -4,13 +4,13 @@ Phase A covers the `email` section only; company-board families arrive in phase 
 """
 
 from collections import Counter
-from collections.abc import Collection, Mapping
+from collections.abc import Collection
 from pathlib import Path
-from typing import Annotated, Any, Literal, Self
+from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
-from jobhunt.config_files import ConfigError, read_yaml_mapping
+from jobhunt.config_files import ConfigError, describe_location, read_yaml_mapping
 from jobhunt.domain.job import Slug
 
 _SENDER = r"^@([a-z0-9-]+\.)+[a-z]{2,}$"
@@ -88,7 +88,7 @@ def load_sources(path: Path, *, known_parsers: Collection[str]) -> SourcesConfig
     try:
         config = SourcesConfig.model_validate(data)
     except ValidationError as exc:
-        lines = [f"{_where(data, e['loc'])}: {e['msg']}" for e in exc.errors()]
+        lines = [f"{describe_location(data, e['loc'])}: {e['msg']}" for e in exc.errors()]
         raise ConfigError(f"{path}:\n  " + "\n  ".join(lines)) from None
     if config.email:
         for index, source in enumerate(config.email.sources):
@@ -98,25 +98,3 @@ def load_sources(path: Path, *, known_parsers: Collection[str]) -> SourcesConfig
                     f"{source.parser!r}; known: {', '.join(sorted(known_parsers))}"
                 )
     return config
-
-
-def _where(data: Mapping[str, Any], loc: tuple[int | str, ...]) -> str:
-    """Readable location, naming list entries by their id when they have one."""
-    parts: list[str] = []
-    node: Any = data
-    for key in loc:
-        node = _child(node, key)
-        if isinstance(key, int) and parts:
-            entry_id = node.get("id") if isinstance(node, Mapping) else None
-            parts[-1] += f"[{key}]" + (f" ({entry_id})" if entry_id else "")
-        else:
-            parts.append(str(key))
-    return ".".join(parts) or "(top level)"
-
-
-def _child(node: Any, key: int | str) -> Any:
-    if isinstance(node, Mapping):
-        return node.get(key)
-    if isinstance(node, list) and isinstance(key, int) and 0 <= key < len(node):
-        return node[key]
-    return None

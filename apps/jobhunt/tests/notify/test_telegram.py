@@ -45,7 +45,7 @@ def api() -> Iterator[FakeBotApi]:
 
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     fake.url = f"http://127.0.0.1:{server.server_address[1]}"
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread = threading.Thread(target=server.serve_forever, args=(0.01,), daemon=True)
     thread.start()
     yield fake
     server.shutdown()

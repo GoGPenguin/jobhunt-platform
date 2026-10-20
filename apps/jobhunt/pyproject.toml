@@ -40,6 +40,7 @@ select = [
 "src/jobhunt/domain/codes/*.py" = ["SIM905"]  # generated lists stay compact as split strings
 "src/jobhunt/domain/language.py" = ["SIM905"]  # word lists stay compact as split strings
 "tests/notify/test_digest.py" = ["RUF001"]  # expected digest text uses real en dashes
+"tests/profile/test_master_cv.py" = ["RUF001"]  # figures like 30–80% use real en dashes
 
 [tool.mypy]
 strict = true

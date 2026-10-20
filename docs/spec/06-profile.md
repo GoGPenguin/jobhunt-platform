@@ -48,14 +48,14 @@ experience:
 certifications: [ { name, code, date: 2026-05 } ]
 education: [ { institution, institution_vi, degree, degree_vi, location, start, end, gpa } ]
 
-# fact = { id, en, vi, vi_reviewed, skills: [skill names], numbers: ["30–80%"] }
+# fact = { id, en, vi, vi_reviewed, skills: [skill names], numbers: ["2", "30–80%"] }  # figures only
 ```
 
 Validation rules:
 
 - Fact ids are unique slugs across the file.
 - Every skill a fact lists exists in `skills`, by name or by an alias from `skill_aliases.yaml` (case-insensitive).
-- Every number a fact lists appears literally in its `en` text (and its `vi` text, when present). This is the base the fabrication validator relies on.
+- `numbers` holds figures only, without units or words ("2", "40%", "30–80%", "15M", "3.82/4.0"), and each appears in its `en` text (and its `vi` text, when present) as a whole figure: "2" doesn't match inside "2024" or "12". Figures read the same in both languages, while units don't ("2 years" / "2 năm"; decided 2026-10-20). This is the base the fabrication validator relies on.
 - Dates are `YYYY-MM`, and an end is not before its start.
 - Unknown keys are rejected (typos surface).
 - Warnings, not errors: facts with `vi_reviewed: false`, and an empty `linkedin`.
@@ -130,6 +130,7 @@ GitLab CI/CD: [GitLab CI]
 | No `master_cv.yaml` | `profile check` reports it missing; the matcher runs without skill matching. |
 | A skill written as an alias in a fact ("K8s") | Accepted when the alias belongs to a listed skill; stored canonically by the matcher. |
 | A number written differently ("30-80%" vs "30–80%") | Rejected: numbers must match literally, so the fact text and the number list stay in sync. |
+| A number with a unit ("2 years") | Rejected with a hint to list the figure only ("2"). |
 | A Vietnamese text not reviewed yet | A warning, not an error; the tailor spec decides whether unreviewed texts may be used. |
 
 ## Dependencies
