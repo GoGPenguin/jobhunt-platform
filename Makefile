@@ -1,7 +1,7 @@
 APP := apps/jobhunt
 RUN := uv run --locked --directory $(APP)
 
-.PHONY: install lint format typecheck test check
+.PHONY: install lint format typecheck test schema schema-check check
 
 install:
 	uv sync --locked --directory $(APP)
@@ -20,4 +20,11 @@ typecheck:
 test:
 	$(RUN) pytest
 
-check: lint typecheck test
+# JSON Schemas in schemas/ are generated from the models; paths are relative to $(APP).
+schema:
+	$(RUN) python -m jobhunt.tools.export_schema --out ../../schemas
+
+schema-check:
+	$(RUN) python -m jobhunt.tools.export_schema --out ../../schemas --check
+
+check: lint typecheck test schema-check

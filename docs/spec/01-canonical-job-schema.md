@@ -88,7 +88,7 @@ Applied by the model, so every parser gets it for free:
 - Adding an optional field, or a new enum value, keeps `schema_version` at 1.
 - **Strict on parse, lenient on read.** Building a job from parser output rejects unknown fields and unknown enum values, so parser bugs become dead letters. Loading a stored job ignores unknown fields and maps unknown enum values to `unknown`, so older code keeps working on data written by newer code (e.g. during a canary rollout).
 - Removing or renaming a field, or changing a field's meaning, means version 2: a spec change, a database migration and a re-parse from the raw store.
-- The JSON Schema is exported from the model and committed as `schemas/job.v1.json`. CI fails if the committed file differs from the model, so every schema change shows up in review.
+- JSON Schemas are exported from the models and committed as `schemas/job.v1.json` and `schemas/dead_letter.v1.json`. They describe the stored/output shape (every field present), which is the contract other components read. CI fails if a committed file differs from the models, so every schema change shows up in review.
 
 ## Acceptance criteria
 
@@ -96,7 +96,7 @@ Applied by the model, so every parser gets it for free:
 - **S2:** A record with several invalid fields (missing title, currency `XYZ`, country `Vietnam` instead of `VN`, naive `posted_at`) fails with an error that names all four fields.
 - **S3:** The normalization rules above each have a test with input and expected output, including a Vietnamese title with decomposed diacritics and a URL carrying `utm_source` and a fragment.
 - **S4:** A `Job` round-trips through JSON (serialize, then parse) to an equal object, and attempting to change a field after building fails.
-- **S5:** `schemas/job.v1.json` is generated from the model, committed, and a CI check fails when it is stale.
+- **S5:** `schemas/job.v1.json` and `schemas/dead_letter.v1.json` are generated from the models, committed, and a CI check fails when either is stale.
 - **S6:** An invalid record in a batch of three produces one dead-letter result and two valid jobs.
 - **S7:** With accepted languages `vi` and `en`, a Japanese-language job is dropped and counted, while `vi`, `en` and `unknown` jobs are kept.
 
@@ -129,6 +129,8 @@ Applied by the model, so every parser gets it for free:
 Added during task 4 (2026-10-20): empty descriptions allowed, strict-on-parse / lenient-on-read, salary periods `week`, `day`, `unknown`.
 
 Added during task 6 (2026-10-20): dead letters keep the parser's record; batch-level `raw_ref`; language filter at collection, `unknown` kept.
+
+Added during task 7 (2026-10-20): committed schemas describe the stored shape; a dead-letter schema is committed too.
 
 1. **Regions are open.** Any well-formed region label is accepted; region definitions live in configuration.
 2. **Code lists are bundled.** Country, currency and language codes ship as small lists in the repo. No new dependency.

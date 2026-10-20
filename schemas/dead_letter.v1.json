@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "FieldError": {
+      "properties": {
+        "loc": {
+          "title": "Loc",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "loc",
+        "message",
+        "type"
+      ],
+      "title": "FieldError",
+      "type": "object"
+    },
+    "ParserInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z0-9][a-z0-9:_-]{0,99}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "title": "ParserInfo",
+      "type": "object"
+    }
+  },
+  "description": "A record that failed validation, kept with everything needed to debug it.",
+  "properties": {
+    "source": {
+      "title": "Source",
+      "type": "string"
+    },
+    "raw_ref": {
+      "title": "Raw Ref",
+      "type": "string"
+    },
+    "parser": {
+      "$ref": "#/$defs/ParserInfo"
+    },
+    "errors": {
+      "items": {
+        "$ref": "#/$defs/FieldError"
+      },
+      "title": "Errors",
+      "type": "array"
+    },
+    "record": {
+      "additionalProperties": true,
+      "title": "Record",
+      "type": "object"
+    },
+    "failed_at": {
+      "format": "date-time",
+      "title": "Failed At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "source",
+    "raw_ref",
+    "parser",
+    "errors",
+    "record",
+    "failed_at"
+  ],
+  "title": "DeadLetter",
+  "type": "object"
+}

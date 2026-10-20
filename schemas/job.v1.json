@@ -1,0 +1,467 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Attribution": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "maxLength": 300,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "url": {
+          "format": "uri",
+          "title": "Url",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "url"
+      ],
+      "title": "Attribution",
+      "type": "object"
+    },
+    "EmploymentType": {
+      "enum": [
+        "full_time",
+        "part_time",
+        "contract",
+        "internship",
+        "temporary",
+        "unknown"
+      ],
+      "title": "EmploymentType",
+      "type": "string"
+    },
+    "JsonValue": {},
+    "Location": {
+      "additionalProperties": false,
+      "properties": {
+        "city": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "City"
+        },
+        "region": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Region"
+        },
+        "country": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Z]{2}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Country"
+        }
+      },
+      "required": [
+        "city",
+        "region",
+        "country"
+      ],
+      "title": "Location",
+      "type": "object"
+    },
+    "ParserInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "pattern": "^[a-z0-9][a-z0-9:_-]{0,99}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "title": "ParserInfo",
+      "type": "object"
+    },
+    "Salary": {
+      "additionalProperties": false,
+      "properties": {
+        "min": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min"
+        },
+        "max": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max"
+        },
+        "currency": {
+          "pattern": "^[A-Z]{3}$",
+          "title": "Currency",
+          "type": "string"
+        },
+        "period": {
+          "$ref": "#/$defs/SalaryPeriod"
+        },
+        "basis": {
+          "$ref": "#/$defs/SalaryBasis"
+        }
+      },
+      "required": [
+        "min",
+        "max",
+        "currency",
+        "period",
+        "basis"
+      ],
+      "title": "Salary",
+      "type": "object"
+    },
+    "SalaryBasis": {
+      "enum": [
+        "gross",
+        "net",
+        "unknown"
+      ],
+      "title": "SalaryBasis",
+      "type": "string"
+    },
+    "SalaryPeriod": {
+      "enum": [
+        "year",
+        "month",
+        "week",
+        "day",
+        "hour",
+        "unknown"
+      ],
+      "title": "SalaryPeriod",
+      "type": "string"
+    },
+    "Seniority": {
+      "enum": [
+        "intern",
+        "junior",
+        "mid",
+        "senior",
+        "lead",
+        "staff_plus",
+        "unknown"
+      ],
+      "title": "Seniority",
+      "type": "string"
+    },
+    "Workplace": {
+      "enum": [
+        "onsite",
+        "hybrid",
+        "remote",
+        "unknown"
+      ],
+      "title": "Workplace",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "source": {
+      "pattern": "^[a-z0-9][a-z0-9:_-]{0,99}$",
+      "title": "Source",
+      "type": "string"
+    },
+    "external_id": {
+      "maxLength": 500,
+      "minLength": 1,
+      "title": "External Id",
+      "type": "string"
+    },
+    "url": {
+      "format": "uri",
+      "title": "Url",
+      "type": "string"
+    },
+    "title": {
+      "maxLength": 300,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "company": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Company",
+      "type": "string"
+    },
+    "description": {
+      "maxLength": 50000,
+      "title": "Description",
+      "type": "string"
+    },
+    "description_truncated": {
+      "default": false,
+      "title": "Description Truncated",
+      "type": "boolean"
+    },
+    "language": {
+      "pattern": "^([a-z]{2}|unknown)$",
+      "title": "Language",
+      "type": "string"
+    },
+    "locations": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Location"
+      },
+      "title": "Locations",
+      "type": "array"
+    },
+    "location_raw": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Location Raw"
+    },
+    "workplace": {
+      "$ref": "#/$defs/Workplace"
+    },
+    "remote_regions": {
+      "anyOf": [
+        {
+          "items": {
+            "pattern": "^[A-Z][A-Z0-9_]{1,31}$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Remote Regions"
+    },
+    "employment_type": {
+      "$ref": "#/$defs/EmploymentType"
+    },
+    "seniority": {
+      "$ref": "#/$defs/Seniority"
+    },
+    "years_experience_min": {
+      "anyOf": [
+        {
+          "maximum": 30,
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Years Experience Min"
+    },
+    "years_experience_max": {
+      "anyOf": [
+        {
+          "maximum": 30,
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Years Experience Max"
+    },
+    "salary": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Salary"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "visa_sponsorship": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Visa Sponsorship"
+    },
+    "relocation_support": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Relocation Support"
+    },
+    "tags": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Tags",
+      "type": "array"
+    },
+    "posted_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Posted At"
+    },
+    "expires_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Expires At"
+    },
+    "collected_at": {
+      "format": "date-time",
+      "title": "Collected At",
+      "type": "string"
+    },
+    "attribution": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Attribution"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "raw_ref": {
+      "maxLength": 500,
+      "minLength": 1,
+      "title": "Raw Ref",
+      "type": "string"
+    },
+    "parser": {
+      "$ref": "#/$defs/ParserInfo"
+    },
+    "extra": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Extra",
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema_version",
+    "source",
+    "external_id",
+    "url",
+    "title",
+    "company",
+    "description",
+    "description_truncated",
+    "language",
+    "locations",
+    "location_raw",
+    "workplace",
+    "remote_regions",
+    "employment_type",
+    "seniority",
+    "years_experience_min",
+    "years_experience_max",
+    "salary",
+    "visa_sponsorship",
+    "relocation_support",
+    "tags",
+    "posted_at",
+    "expires_at",
+    "collected_at",
+    "attribution",
+    "raw_ref",
+    "parser",
+    "extra"
+  ],
+  "title": "Job",
+  "type": "object"
+}

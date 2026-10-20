@@ -43,8 +43,9 @@ don't need asking. Record the answers in docs/decisions/.
 Run from the repo root. uv manages Python 3.12 and the venv in `apps/jobhunt/`.
 
 - `make install` — create the venv from `uv.lock`
-- `make check` — ruff lint + format check, `mypy --strict`, pytest (what CI runs)
+- `make check` — ruff lint + format check, `mypy --strict`, pytest, schema drift check (what CI runs)
 - `make test`, `make lint`, `make typecheck`, `make format`
+- `make schema` — regenerate `schemas/*.json` after changing a model; commit them with the model change
 - Single test: `uv run --directory apps/jobhunt pytest tests/test_smoke.py::test_package_imports`
 - Add a dependency (only after spec approval): `uv add --directory apps/jobhunt <pkg>`
 - `make up` / `make down` arrive with Docker Compose in the collector-runtime spec.

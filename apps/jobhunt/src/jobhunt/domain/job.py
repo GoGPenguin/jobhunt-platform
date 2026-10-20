@@ -36,7 +36,8 @@ DESCRIPTION_MAX_CHARS = 50_000
 POSTED_AFTER_COLLECTED_TOLERANCE = timedelta(days=1)
 
 _SLUG = r"^[a-z0-9][a-z0-9:_-]{0,99}$"
-_REGION = re.compile(r"[A-Z][A-Z0-9_]{1,31}")
+_REGION_PATTERN = r"^[A-Z][A-Z0-9_]{1,31}$"
+_REGION = re.compile(_REGION_PATTERN)
 _SEMVER = r"^\d+\.\d+\.\d+$"
 
 
@@ -108,12 +109,25 @@ def _region(value: str) -> str:
     return value
 
 
-Title = Annotated[str, _line(300)]
-CompanyName = Annotated[str, _line(200)]
-PlaceName = Annotated[str, _line(200)]
-CountryCode = Annotated[str, _member_of(COUNTRY_CODES, "ISO 3166-1 alpha-2 country")]
-CurrencyCode = Annotated[str, _member_of(CURRENCY_CODES, "ISO 4217 currency")]
-RegionCode = Annotated[str, AfterValidator(_region)]
+def _schema(**rules: JsonValue) -> Any:
+    """JSON Schema rules mirroring a custom validator (documentation only, not enforced here)."""
+    return Field(json_schema_extra=rules)
+
+
+Title = Annotated[str, _line(300), _schema(minLength=1, maxLength=300)]
+CompanyName = Annotated[str, _line(200), _schema(minLength=1, maxLength=200)]
+PlaceName = Annotated[str, _line(200), _schema(minLength=1, maxLength=200)]
+AttributionText = Annotated[str, _line(300), _schema(minLength=1, maxLength=300)]
+LocationText = Annotated[str, _line(500), _schema(minLength=1, maxLength=500)]
+CountryCode = Annotated[
+    str, _member_of(COUNTRY_CODES, "ISO 3166-1 alpha-2 country"), _schema(pattern="^[A-Z]{2}$")
+]
+CurrencyCode = Annotated[
+    str, _member_of(CURRENCY_CODES, "ISO 4217 currency"), _schema(pattern="^[A-Z]{3}$")
+]
+RegionCode = Annotated[str, AfterValidator(_region), _schema(pattern=_REGION_PATTERN)]
+LanguageCode = Annotated[str, _schema(pattern="^([a-z]{2}|unknown)$")]
+Description = Annotated[str, _schema(maxLength=DESCRIPTION_MAX_CHARS)]
 UtcDatetime = Annotated[AwareDatetime, AfterValidator(to_utc)]
 Amount = Annotated[Decimal, Field(ge=0)]
 Years = Annotated[int, Field(ge=0, le=30)]
@@ -133,7 +147,10 @@ def _check_url(value: str, info: ValidationInfo) -> str:
 class _Model(BaseModel):
     """Frozen, strict about unknown fields, lenient when reading stored data."""
 
-    model_config = ConfigDict(frozen=True, extra="forbid")
+    # Stored JSON always has every field, so the exported schema marks them all required.
+    model_config = ConfigDict(
+        frozen=True, extra="forbid", json_schema_serialization_defaults_required=True
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -183,7 +200,7 @@ class Salary(_Model):
 
 
 class Attribution(_Model):
-    text: Annotated[str, _line(300)]
+    text: AttributionText
     url: WebUrl
 
     _url = field_validator("url")(_check_url)
@@ -201,11 +218,11 @@ class Job(_Model):
     url: WebUrl
     title: Title
     company: CompanyName
-    description: str
+    description: Description
     description_truncated: bool = False
-    language: str
+    language: LanguageCode
     locations: tuple[Location, ...] = ()
-    location_raw: Annotated[str, _line(500)] | None = None
+    location_raw: LocationText | None = None
     workplace: Workplace
     remote_regions: tuple[RegionCode, ...] | None = None
     employment_type: EmploymentType
