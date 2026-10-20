@@ -1,5 +1,6 @@
 import imaplib
 import logging
+from collections.abc import Callable, Iterable
 from datetime import UTC, date, datetime
 from email.message import EmailMessage
 from typing import Any
@@ -10,16 +11,21 @@ from pydantic import SecretStr
 from jobhunt.credentials import ImapCredentials
 from jobhunt.sources.config import ImapSettings
 from jobhunt.sources.imap import TransportError, fetch_emails
+from jobhunt.sources.raw import RawPayload
 
 NOW = datetime(2026, 10, 20, 2, 0, tzinfo=UTC)
 CREDS = ImapCredentials(user="me@example.com", password=SecretStr("zq9fakeapppass7x"))
 SETTINGS = ImapSettings(label="jobhunt")
 
 
-def message(n: int) -> bytes:
+HEADERS_ONLY = "(BODY.PEEK[HEADER.FIELDS (MESSAGE-ID)])"
+
+
+def message(n: int, with_id: bool = True) -> bytes:
     msg = EmailMessage()
     msg["From"] = "LinkedIn <jobs-noreply@linkedin.com>"
-    msg["Message-ID"] = f"<{n}@linkedin.com>"
+    if with_id:
+        msg["Message-ID"] = f"<{n}@linkedin.com>"
     msg["Subject"] = f"Alert {n}"
     msg.set_content(f"View job: https://www.linkedin.com/comm/jobs/view/{n}/?otpToken=SECRET\n")
     return msg.as_bytes()
@@ -54,12 +60,17 @@ class FakeImap:
         if command == "SEARCH":
             return "OK", [" ".join(str(u) for u in sorted(self.messages)).encode()]
         if command == "FETCH":
-            if args[1] != "(BODY.PEEK[])":
+            if args[1] not in ("(BODY.PEEK[])", HEADERS_ONLY):
                 pytest.fail(f"FETCH {args[1]} would mark messages as read")
             data: list[Any] = []
             for uid in args[0].split(","):
                 body = self.messages[int(uid)]
-                data += [(f"{uid} (UID {uid} BODY[] {{{len(body)}}}".encode(), body), b")"]
+                if args[1] == HEADERS_ONLY:  # like Gmail: the requested header, then a blank line
+                    lines = body.split(b"\n")
+                    found = [ln for ln in lines if ln.lower().startswith(b"message-id:")]
+                    body = b"".join(ln + b"\r\n" for ln in found) + b"\r\n"
+                part = "BODY[HEADER.FIELDS (MESSAGE-ID)]" if args[1] == HEADERS_ONLY else "BODY[]"
+                data += [(f"{uid} (UID {uid} {part} {{{len(body)}}}".encode(), body), b")"]
             return "OK", data
         pytest.fail(f"UID {command} is not a read-only command")
 
@@ -162,3 +173,53 @@ def test_non_ascii_label_rejected() -> None:
             ImapSettings(label="Việc làm"), CREDS, since=date(2026, 10, 17), now=lambda: NOW,
             connect=lambda h, p: FakeImap({}),
         )  # fmt: skip
+
+
+# Only-new mail (spec 04, D7)
+
+
+def known_after(*runs: list[RawPayload]) -> Callable[[Iterable[str]], set[str]]:
+    stored = {p.raw_ref for run in runs for p in run}
+    return lambda refs: {r for r in refs if r in stored}
+
+
+def body_fetches(fake: FakeImap) -> list[str]:
+    return [c for c in fake.commands if c.startswith("UID FETCH") and c.endswith("(BODY.PEEK[])")]
+
+
+def test_second_run_fetches_headers_only() -> None:
+    messages = {1: message(1), 2: message(2)}
+    first = run(FakeImap(messages), known=known_after())
+    fake = FakeImap(messages)
+    assert run(fake, known=known_after(first)) == []
+    assert "UID FETCH 1,2 " + HEADERS_ONLY in fake.commands
+    assert body_fetches(fake) == []
+
+
+def test_only_unknown_bodies_are_fetched() -> None:
+    stored = run(FakeImap({1: message(1)}), known=known_after())
+    fake = FakeImap({1: message(1), 2: message(2), 3: message(3)})
+    payloads = run(fake, known=known_after(stored))
+    assert [p.origin for p in payloads] == ["email:<2@linkedin.com>", "email:<3@linkedin.com>"]
+    assert body_fetches(fake) == ["UID FETCH 2,3 (BODY.PEEK[])"]
+
+
+def test_message_without_id_is_always_fetched() -> None:
+    messages = {1: message(1, with_id=False)}
+    first = run(FakeImap(messages), known=known_after())
+    fake = FakeImap(messages)
+    run(fake, known=known_after(first))
+    assert body_fetches(fake) == ["UID FETCH 1 (BODY.PEEK[])"]
+
+
+def test_precheck_raw_ref_matches_full_email() -> None:
+    fake = FakeImap({5: message(5)})
+    seen: list[str] = []
+
+    def record_and_know_nothing(refs: Iterable[str]) -> set[str]:
+        seen.extend(refs)
+        return set()
+
+    run(fake, known=record_and_know_nothing)
+    full = RawPayload.from_email(message(5), fetched_at=NOW)
+    assert seen == [full.raw_ref]

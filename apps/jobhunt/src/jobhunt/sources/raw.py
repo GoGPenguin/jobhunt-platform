@@ -10,6 +10,7 @@ import hashlib
 import re
 from datetime import datetime
 from email import policy
+from email.parser import BytesHeaderParser
 from typing import Self
 from urllib.parse import unquote_plus
 
@@ -89,16 +90,29 @@ class RawPayload(BaseModel):
         """Redact an email and key it by Message-ID (content hash if it has none), so fetching
         the same email again gives the same raw_ref."""
         content = redact_email(raw)
-        headers = email.message_from_bytes(content, policy=policy.default)
-        message_id = str(headers["Message-ID"] or "").strip()
-        origin = f"email:{message_id}" if message_id else f"email:sha256:{_sha256(content)}"
+        origin = email_origin(message_id(content), content)
         return cls(
-            raw_ref=f"raw/email/{_sha256(origin.encode())[:32]}",
+            raw_ref=raw_ref_for(origin),
             origin=origin,
             content_type="message/rfc822",
             content=content,
             fetched_at=to_utc(fetched_at),
         )
+
+
+def message_id(raw: bytes) -> str:
+    """The Message-ID header of an email (or of its headers alone), "" if it has none."""
+    headers = BytesHeaderParser(policy=policy.default).parsebytes(raw)
+    return str(headers["Message-ID"] or "").strip()  # strip: 3.12.3 keeps folding whitespace
+
+
+def email_origin(message_id: str, content: bytes) -> str:
+    """`email:<Message-ID>`, or a content hash for email without one."""
+    return f"email:{message_id}" if message_id else f"email:sha256:{_sha256(content)}"
+
+
+def raw_ref_for(origin: str) -> str:
+    return f"raw/email/{_sha256(origin.encode())[:32]}"
 
 
 def _sha256(data: bytes) -> str:
