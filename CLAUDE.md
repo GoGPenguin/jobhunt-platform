@@ -56,4 +56,5 @@ Run from the repo root. uv manages Python (pinned to an exact version in `apps/j
 - `make db-up` / `make db-down` — Postgres 18 + pgvector in Docker Compose (127.0.0.1 only); `db-up` first generates missing DB passwords into `secrets.env` (never type them)
 - `make db-migrate` — `jobhunt db bootstrap` (roles, database; as admin) then `jobhunt db migrate` (SQL files in `jobhunt/store/migrations/`, as `jobhunt_owner`). The app connects as `jobhunt_app` (rows only, no DDL)
 - `make test-db` — store tests against a throwaway Postgres (port 55432, in memory, removed afterwards); CI runs them via a service container. Without `JOBHUNT_TEST_DATABASE_ADMIN_URL`, Postgres tests are skipped
+- `make digest` — `jobhunt digest send`: Telegram digest of postings not sent yet (marked only after Telegram accepts every message); `--test` sends a test line; `jobhunt digest list [--since 7d]`; `jobhunt telegram find-chat` for setup. Token and chat id in `secrets.env` (`JOBHUNT_TELEGRAM_BOT_TOKEN`, `JOBHUNT_TELEGRAM_CHAT_ID`)
 - `make up` / `make down` for the whole stack arrive with the collector-runtime spec.

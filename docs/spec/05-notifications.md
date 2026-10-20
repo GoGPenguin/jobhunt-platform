@@ -106,7 +106,7 @@ Collector: last run 11:58, OK (4 emails, 12 new jobs)
 | Case | Expected handling |
 | ---- | ----------------- |
 | Laptop off at 12:00 | The timer runs at the next boot or login (`Persistent=true`). |
-| Two digests started at once | The notification transaction locks: the second marks nothing new and sends "no new jobs". |
+| Two digests started at once | The second finds the digest lock taken and stops at once with exit code 5, sending nothing (changed 2026-10-20 from "sends no new jobs": fail-fast avoids a confusing extra message). |
 | A job joins a sent posting from another source | Not sent again. |
 | Posting without a description (LinkedIn) | Shown normally; the description isn't part of the digest. |
 | Token revoked | 401: exit 3, "check JOBHUNT_TELEGRAM_BOT_TOKEN". |

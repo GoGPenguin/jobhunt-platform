@@ -4,7 +4,7 @@ SECRETS := $(HOME)/.config/jobhunt/secrets.env
 COMPOSE := docker compose --env-file $(SECRETS)
 TEST_COMPOSE := docker compose -p jobhunt-test -f docker-compose.yml -f docker-compose.test.yml
 
-.PHONY: install lint format typecheck test golden schema schema-check check collect-email db-up db-down db-migrate test-db
+.PHONY: install lint format typecheck test golden schema schema-check check collect-email digest db-up db-down db-migrate test-db
 
 install:
 	uv sync --locked --directory $(APP)
@@ -60,3 +60,7 @@ test-db:
 	JOBHUNT_TEST_DATABASE_ADMIN_URL=postgresql://postgres:jobhunt-test@127.0.0.1:55432/postgres \
 		$(RUN) pytest tests/store; status=$$?; \
 		JOBHUNT_DB_ADMIN_PASSWORD=jobhunt-test $(TEST_COMPOSE) down -v; exit $$status
+
+# Send the Telegram digest of postings not sent yet (spec 05).
+digest:
+	$(RUN) jobhunt digest send

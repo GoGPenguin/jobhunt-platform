@@ -2,6 +2,7 @@
 
 import logging
 from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from jobhunt.config_files import ConfigError, read_yaml_mapping
 from jobhunt.domain.codes import LANGUAGE_CODES
@@ -28,3 +29,18 @@ def load_accepted_languages(path: Path) -> frozenset[str] | None:
     if unknown:
         raise ConfigError(f"{path}: languages.postings has invalid ISO 639-1 codes: {unknown}")
     return frozenset(postings)
+
+
+def load_timezone(path: Path) -> ZoneInfo:
+    """`candidate.timezone` (an IANA name such as Asia/Ho_Chi_Minh) for showing times; UTC if
+    the file or the key is missing."""
+    if not path.exists():
+        return ZoneInfo("UTC")
+    name = (read_yaml_mapping(path).get("candidate") or {}).get("timezone")
+    if not name:
+        return ZoneInfo("UTC")
+    try:
+        return ZoneInfo(str(name))
+    except (ZoneInfoNotFoundError, ValueError):
+        message = f"{path}: candidate.timezone {name!r} is not a known IANA timezone"
+        raise ConfigError(message) from None

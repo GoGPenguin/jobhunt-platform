@@ -3,10 +3,13 @@
     jobhunt collect email [--since 3d] [--eml FILE ...] [--dry-run] [--config-dir DIR]
     jobhunt reparse [--source ID] [--config-dir DIR]
     jobhunt db init-secrets | bootstrap | migrate | prune-raw [--older-than 365d]
+    jobhunt digest send [--test] | list [--since 7d]
+    jobhunt telegram find-chat
 
-stdout gets one JSON object per line ({"type": "job" | "dead_letter" | "summary", ...}); logs
-and errors go to stderr with every known password redacted. Exit codes: 0 ok, 2 config error,
-3 mail server error, 4 database error. See plans 02A and 04.
+stdout gets one JSON object per line ({"type": "job" | "dead_letter" | "posting" | "summary",
+...}); logs and errors go to stderr with every known secret redacted. Exit codes: 0 ok, 2 config
+error, 3 mail server or Telegram error, 4 database error, 5 another digest is running. See plans
+02A, 04 and 05.
 """
 
 import argparse
@@ -18,20 +21,24 @@ from collections.abc import Callable, Mapping, Sequence
 from contextlib import AbstractContextManager
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
+from typing import Protocol
+from zoneinfo import ZoneInfo
 
 import psycopg
 
 from jobhunt.config_files import ConfigError
 from jobhunt.credentials import ensure_secrets, imap_credentials, load_secrets
 from jobhunt.logs import configure_logging
+from jobhunt.notify.digest import compose
+from jobhunt.notify.telegram import DEFAULT_API_BASE, TelegramClient, TelegramError
 from jobhunt.pipeline import process_payloads
-from jobhunt.preferences import load_accepted_languages
+from jobhunt.preferences import load_accepted_languages, load_timezone
 from jobhunt.sources.config import EmailSection, load_sources
 from jobhunt.sources.imap import ImapClient, TransportError, connect_ssl, fetch_emails
 from jobhunt.sources.raw import RawPayload
 from jobhunt.sources.registry import REGISTRY
 from jobhunt.store import migrate as db_migrate
-from jobhunt.store.port import CollectionRun, JobStore
+from jobhunt.store.port import CollectionRun, DigestBusyError, JobStore
 from jobhunt.store.postgres import PostgresJobStore
 from jobhunt.store.settings import (
     ADMIN_PASSWORD,
@@ -48,9 +55,22 @@ from jobhunt.store.settings import (
 log = logging.getLogger("jobhunt.cli")
 
 DEFAULT_CONFIG_DIR = Path.home() / ".config" / "jobhunt"
-EXIT_OK, EXIT_CONFIG, EXIT_TRANSPORT, EXIT_DATABASE = 0, 2, 3, 4
+EXIT_OK, EXIT_CONFIG, EXIT_TRANSPORT, EXIT_DATABASE, EXIT_BUSY = 0, 2, 3, 4, 5
+TELEGRAM_TOKEN = "JOBHUNT_TELEGRAM_BOT_TOKEN"  # noqa: S105 - variable name, not a value
+TELEGRAM_CHAT = "JOBHUNT_TELEGRAM_CHAT_ID"
+
+
+class Telegram(Protocol):
+    def send_message(self, chat_id: str, html: str) -> int: ...
+    def find_chats(self) -> list[tuple[str, str]]: ...
+
 
 OpenStore = Callable[[str], AbstractContextManager[JobStore]]
+OpenTelegram = Callable[[str, str], Telegram]
+
+
+def _telegram_client(token: str, api_base: str) -> Telegram:
+    return TelegramClient(token, api_base=api_base)
 
 
 def parse_since(value: str, *, today: date) -> date:
@@ -78,6 +98,7 @@ def main(
     connect: Callable[[str, int], ImapClient] = connect_ssl,
     env: Mapping[str, str] = os.environ,
     open_store: OpenStore = PostgresJobStore,
+    open_telegram: OpenTelegram = _telegram_client,
 ) -> int:
     args = _arguments().parse_args(argv)
     run = _Run(args, now, env, logging.DEBUG if args.verbose else logging.INFO, open_store)
@@ -87,11 +108,18 @@ def main(
             return run.db(args.action)
         if args.command == "reparse":
             return run.reparse()
+        if args.command == "digest":
+            return run.digest(args.action, open_telegram)
+        if args.command == "telegram":
+            return run.find_chat(open_telegram)
         return run.collect_email(connect)
+    except DigestBusyError as exc:
+        log.error("%s; try again when it has finished", exc)
+        return EXIT_BUSY
     except (ConfigError, ValueError, OSError) as exc:
         log.error("%s", exc)  # logged, so a secret in the message is redacted
         return EXIT_CONFIG
-    except TransportError as exc:
+    except (TransportError, TelegramError) as exc:
         log.error("%s", exc)
         return EXIT_TRANSPORT
     except (psycopg.Error, db_migrate.MigrationError) as exc:
@@ -192,6 +220,67 @@ class _Run:
             )
         return EXIT_OK
 
+    def telegram(self, open_telegram: OpenTelegram) -> Telegram:
+        token = load_secrets([TELEGRAM_TOKEN], self.env, self.secrets_path)[TELEGRAM_TOKEN]
+        self.redact(token)
+        return open_telegram(token, self.env.get("JOBHUNT_TELEGRAM_API_BASE", DEFAULT_API_BASE))
+
+    def chat_id(self) -> str:
+        try:
+            return load_secrets([TELEGRAM_CHAT], self.env, self.secrets_path)[TELEGRAM_CHAT]
+        except ConfigError:
+            raise ConfigError(
+                f"{TELEGRAM_CHAT} missing in {self.secrets_path}: send your bot a message, run "
+                "`jobhunt telegram find-chat`, then add the chat id"
+            ) from None
+
+    def digest(self, action: str, open_telegram: OpenTelegram) -> int:
+        tz = load_timezone(self.config_dir / "preferences.yaml")
+        if action == "list":
+            return self.digest_list(tz)
+        telegram, chat = self.telegram(open_telegram), self.chat_id()
+        if self.args.test:
+            stamp = self.now().astimezone(tz).strftime("%H:%M")
+            message = f"JobHunt test message: the bot can reach this chat. {stamp}"
+            telegram.send_message(chat, message)
+            return EXIT_OK
+        with self.open_store(self.app_conninfo()) as store, store.digest_lock():
+            unsent, last_run = store.unsent_postings(), store.last_collection_run()
+            digest = compose(unsent, last_run, now=self.now(), tz=tz)
+            message_ids = [telegram.send_message(chat, text) for text in digest.messages]
+            # Only after Telegram accepted every message: a failed send marks nothing.
+            store.mark_sent(digest.postings, sent_at=self.now(), telegram_message_ids=message_ids)
+        summary = {"messages": len(message_ids), "postings": len(digest.postings)}
+        sys.stdout.write(json.dumps({"type": "summary", **summary}) + "\n")
+        return EXIT_OK
+
+    def digest_list(self, tz: ZoneInfo) -> int:
+        since = self.now() - parse_days(self.args.since)
+        with self.open_store(self.app_conninfo()) as store:
+            for posting, sent in store.postings_since(since):
+                job = posting.representative.job
+                line = {
+                    "type": "posting",
+                    "sent": sent,
+                    "first_seen_at": posting.first_seen_at.astimezone(tz).isoformat(),
+                    "title": job.title,
+                    "company": job.company,
+                    "url": job.url,
+                    "sources": sorted({j.job.source for j in posting.jobs}),
+                }
+                sys.stdout.write(json.dumps(line, ensure_ascii=False) + "\n")
+        return EXIT_OK
+
+    def find_chat(self, open_telegram: OpenTelegram) -> int:
+        chats = self.telegram(open_telegram).find_chats()
+        for chat_id, name in chats:
+            sys.stdout.write(json.dumps({"type": "chat", "chat_id": chat_id, "name": name}) + "\n")
+        if chats:
+            log.info("add %s=<chat_id> to %s", TELEGRAM_CHAT, self.secrets_path)
+        else:
+            log.warning("no chats yet: send your bot any message in Telegram, then run this again")
+        return EXIT_OK
+
     def db(self, action: str) -> int:
         if action == "init-secrets":
             ensure_secrets(self.secrets_path, DB_PASSWORD_KEYS, out=sys.stderr)
@@ -253,6 +342,18 @@ def _arguments() -> argparse.ArgumentParser:
         "payloads",
     )
     db.add_argument("--older-than", default="365d", help="for prune-raw (default 365d)")
+
+    digest = commands.add_parser("digest", parents=[common], help="the daily Telegram digest")
+    digest.add_argument(
+        "action",
+        choices=["send", "list"],
+        help="send: postings not sent yet; list: recent postings and whether they were sent",
+    )
+    digest.add_argument("--test", action="store_true", help="send: only a test message")
+    digest.add_argument("--since", default="7d", help="list: how far back (default 7d)")
+
+    telegram = commands.add_parser("telegram", parents=[common], help="Telegram setup")
+    telegram.add_argument("action", choices=["find-chat"], help="chats that messaged the bot")
     return parser
 
 
