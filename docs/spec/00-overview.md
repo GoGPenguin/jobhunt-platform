@@ -82,7 +82,7 @@ Prices change, so confirm before buying.
 
 ## 10. Acceptance criteria for the first milestone (MVP)
 
-- **AC1:** `docker compose up` collects jobs from two sources (one JSON/RSS via YAML only, one Greenhouse board) into Postgres.
+- **AC1:** `docker compose up` collects jobs covering Vietnam and Asia from two sources into Postgres: one job-alert email source (a Vietnamese platform or LinkedIn alerts), and one company-board family (Greenhouse, Lever or Ashby) configured by YAML only.
 - **AC2:** Duplicates across runs and sources are not stored twice.
 - **AC3:** A new YAML source plus fixture passes CI schema validation and golden-file tests without code changes.
 - **AC4:** A daily Telegram digest lists new jobs with scores.
