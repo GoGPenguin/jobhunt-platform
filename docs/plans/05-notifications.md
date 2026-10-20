@@ -1,7 +1,7 @@
 # Plan 05: Notifications (daily Telegram digest)
 
 Spec: [05-notifications](../spec/05-notifications.md)
-Status: approved 2026-10-20
+Status: done 2026-10-20 (tasks 1–6; decision records 0023–0028)
 
 ## Design
 
