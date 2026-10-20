@@ -1,0 +1,13 @@
+version: 2
+updates:
+  # Bumps the SHA-pinned actions in .github/workflows/.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+
+  # Bumps locked Python dependencies in apps/jobhunt/uv.lock.
+  - package-ecosystem: uv
+    directory: /apps/jobhunt
+    schedule:
+      interval: weekly
