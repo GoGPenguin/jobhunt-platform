@@ -33,6 +33,11 @@ Python 3.12 (uv, ruff, mypy --strict, pytest), Pydantic, Postgres+pgvector, k3s/
 Plan first. One task at a time. Tests before or with code. After each task, note what
 was verified (IAM scope, secrets, cost) in docs/decisions/.
 
+Ask before deciding: at the start of each task, list every design choice the spec, plan and
+constitution don't settle, and ask the user in one batch, with options and a recommendation.
+Don't decide silently and report afterwards. Purely mechanical choices (formatting, test layout)
+don't need asking. Record the answers in docs/decisions/.
+
 ## Commands
 
 Run from the repo root. uv manages Python 3.12 and the venv in `apps/jobhunt/`.

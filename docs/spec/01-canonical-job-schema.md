@@ -36,7 +36,7 @@ Out of scope, covered by later specs:
 | `url` | URL | yes | Public posting or apply page, normalized (see below). |
 | `title` | str | yes | 1–300 characters after normalization. |
 | `company` | str | yes | Display name as the source states it, 1–200 characters. |
-| `description` | str | yes | Plain text converted from HTML, paragraphs and list items kept as line breaks. Maximum 50,000 characters. |
+| `description` | str | yes | Plain text converted from HTML, paragraphs and list items kept as line breaks. Maximum 50,000 characters. May be empty when the source gives none (e.g. job-alert emails); a later step fetches the public job page to fill it in before matching. |
 | `description_truncated` | bool | yes | `true` if `description` was cut to the limit. |
 | `language` | str | yes | ISO 639-1 language of the posting (`en`, `vi`, `ja`…), or `unknown`. Decides whether a Vietnamese CV is offered. |
 | `locations` | list[Location] | yes | May be empty. See Location. |
@@ -60,7 +60,7 @@ Out of scope, covered by later specs:
 
 **Location:** `city: str | None`, `region: str | None`, `country: str | None` (ISO 3166-1 alpha-2). At least one must be set.
 
-**Salary:** `min: Decimal | None`, `max: Decimal | None` (at least one set, min ≤ max, both ≥ 0), `currency` (ISO 4217, e.g. `USD`, `VND`, `JPY`), `period` (`year`, `month`, `hour`), `basis` (`gross`, `net`, `unknown`). `basis` matters because Vietnamese postings often state net monthly salary.
+**Salary:** `min: Decimal | None`, `max: Decimal | None` (at least one set, min ≤ max, both ≥ 0), `currency` (ISO 4217, e.g. `USD`, `VND`, `JPY`), `period` (`year`, `month`, `week`, `day`, `hour`, `unknown`), `basis` (`gross`, `net`, `unknown`). `basis` matters because Vietnamese postings often state net monthly salary.
 
 **Attribution:** `text: str`, `url: URL`. Shown wherever the job is shown, including the Telegram digest.
 
@@ -83,7 +83,8 @@ Applied by the model, so every parser gets it for free:
 
 ## Versioning
 
-- Adding an optional field, or a new enum value, keeps `schema_version` at 1. Consumers must accept unknown enum values as `unknown` rather than crash.
+- Adding an optional field, or a new enum value, keeps `schema_version` at 1.
+- **Strict on parse, lenient on read.** Building a job from parser output rejects unknown fields and unknown enum values, so parser bugs become dead letters. Loading a stored job ignores unknown fields and maps unknown enum values to `unknown`, so older code keeps working on data written by newer code (e.g. during a canary rollout).
 - Removing or renaming a field, or changing a field's meaning, means version 2: a spec change, a database migration and a re-parse from the raw store.
 - The JSON Schema is exported from the model and committed as `schemas/job.v1.json`. CI fails if the committed file differs from the model, so every schema change shows up in review.
 
@@ -105,6 +106,7 @@ Applied by the model, so every parser gets it for free:
 | Several locations (e.g. "Singapore or Tokyo") | Multiple `Location` entries. |
 | "Remote, APAC only" | `workplace: remote`, `remote_regions: ["APAC"]`, `location_raw` kept. |
 | Region label not seen before (e.g. "Remote – LATAM") | `remote_regions: ["LATAM"]`; accepted as long as the format is valid. |
+| Job-alert email with no description | `description: ""`; the job is stored and its public page is fetched later. |
 | "Remote" with no region stated | `remote_regions: None` (unknown), not `WORLDWIDE`. |
 | Salary "15–25 triệu net/month" | Parser converts to `min: 15000000, max: 25000000, currency: VND, period: month, basis: net`. |
 | Salary "Competitive" or "Negotiable" | `salary: None`. |
@@ -120,6 +122,8 @@ Applied by the model, so every parser gets it for free:
 - **Type check:** `mypy --strict` over the model package.
 
 ## Decisions
+
+Added during task 4 (2026-10-20): empty descriptions allowed, strict-on-parse / lenient-on-read, salary periods `week`, `day`, `unknown`.
 
 1. **Regions are open.** Any well-formed region label is accepted; region definitions live in configuration.
 2. **Code lists are bundled.** Country, currency and language codes ship as small lists in the repo. No new dependency.
