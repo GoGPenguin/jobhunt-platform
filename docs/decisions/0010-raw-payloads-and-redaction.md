@@ -23,3 +23,5 @@ Spec: [02-source-framework](../spec/02-source-framework.md); plan [02A](../plans
 ## Follow-up: CI failure on Python 3.12.3
 
 The first push failed in CI on one test (`test_redacts_links_in_headers`) while passing locally. Cause: CI uses the runner's Python 3.12.3, the dev machine uv's 3.12.14, and 3.12.3's `email` package keeps the folding space when reading a header folded right after the colon (`' <https://…>'`). Reproduced locally with `uv run --python 3.12.3`. The redaction output was correct; the test now strips the header value, as parsers must when reading headers. All 224 tests pass on both 3.12.3 and 3.12.14.
+
+**Decision (asked):** pin the exact interpreter everywhere. `apps/jobhunt/.python-version` is `3.12.14`, and CI sets `UV_PYTHON_PREFERENCE=only-managed`, so it downloads that exact version through uv (cached) and never uses the runner's system Python. Later Docker images use the same pin.

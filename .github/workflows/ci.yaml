@@ -18,6 +18,10 @@ jobs:
     name: make check
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    env:
+      # Same interpreter as the dev machine: the exact version in apps/jobhunt/.python-version,
+      # downloaded by uv, never the runner's system Python.
+      UV_PYTHON_PREFERENCE: only-managed
     steps:
       # Actions are pinned to commit SHAs; Dependabot proposes updates (.github/dependabot.yml).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -28,6 +32,7 @@ jobs:
         with:
           version: "0.13.1"
           enable-cache: true
+          cache-python: true
           cache-dependency-glob: apps/jobhunt/uv.lock
 
       - name: Install from uv.lock

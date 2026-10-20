@@ -41,7 +41,7 @@ don't need asking. Record the answers in docs/decisions/.
 
 ## Commands
 
-Run from the repo root. uv manages Python 3.12 and the venv in `apps/jobhunt/`.
+Run from the repo root. uv manages Python (pinned to an exact version in `apps/jobhunt/.python-version`, same in CI) and the venv in `apps/jobhunt/`.
 
 - `make install` — create the venv from `uv.lock`
 - `make check` — ruff lint + format check, `mypy --strict`, pytest, schema drift check (what CI runs)
