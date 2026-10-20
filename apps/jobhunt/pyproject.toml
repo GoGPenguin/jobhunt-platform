@@ -39,6 +39,7 @@ select = [
 "tests/**" = ["S101"]  # assert is how pytest tests work
 "src/jobhunt/domain/codes/*.py" = ["SIM905"]  # generated lists stay compact as split strings
 "src/jobhunt/domain/language.py" = ["SIM905"]  # word lists stay compact as split strings
+"tests/notify/test_digest.py" = ["RUF001"]  # expected digest text uses real en dashes
 
 [tool.mypy]
 strict = true

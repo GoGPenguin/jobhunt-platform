@@ -46,7 +46,7 @@ The bot only ever sends to the configured chat id. The token is a secret: redact
 ## The digest
 
 ```text
-JobHunt · 12 new jobs · Tue 21 Oct
+JobHunt · 12 new jobs · Wed 21 Oct
 Collector: last run 11:58, OK (4 emails, 12 new jobs)
 
 1. Senior DevOps Engineer · Lumen Robotics
