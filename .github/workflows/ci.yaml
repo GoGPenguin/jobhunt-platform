@@ -28,10 +28,9 @@ jobs:
         with:
           version: "0.13.1"
           enable-cache: true
-          cache-python: true
           cache-dependency-glob: apps/jobhunt/uv.lock
 
-      - name: Install (from uv.lock, Python 3.12 managed by uv)
+      - name: Install from uv.lock
         run: make install
 
       - name: Lint, type check, test, schema drift

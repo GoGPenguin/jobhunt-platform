@@ -1,7 +1,7 @@
 # Plan 01: Canonical job schema
 
 Spec: [01-canonical-job-schema](../spec/01-canonical-job-schema.md)
-Status: approved 2026-10-20
+Status: done 2026-10-20 (all 8 tasks; decision records 0001-0008)
 
 ## Layout
 
