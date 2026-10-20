@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": {
+    "items": {
+      "type": "string"
+    },
+    "type": "array"
+  },
+  "description": "skill_aliases.yaml: skill name -> its alternative names. Only for the JSON Schema.",
+  "title": "SkillAliasesFile",
+  "type": "object"
+}

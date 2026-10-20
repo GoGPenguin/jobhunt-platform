@@ -8,7 +8,12 @@ from jobhunt.tools.export_schema import main, render_schemas
 
 
 def test_renders_all_schemas() -> None:
-    assert set(render_schemas()) == {"job.v1.json", "dead_letter.v1.json", "sources.v1.json"}
+    assert set(render_schemas()) == {
+        "job.v1.json",
+        "dead_letter.v1.json",
+        "sources.v1.json",
+        "skill_aliases.v1.json",
+    }
 
 
 def test_sources_schema_is_input_shape() -> None:
@@ -54,6 +59,7 @@ def test_write_then_check_passes(tmp_path: Path) -> None:
     assert sorted(p.name for p in tmp_path.iterdir()) == [
         "dead_letter.v1.json",
         "job.v1.json",
+        "skill_aliases.v1.json",
         "sources.v1.json",
     ]
     assert main(["--out", str(tmp_path), "--check"]) == 0

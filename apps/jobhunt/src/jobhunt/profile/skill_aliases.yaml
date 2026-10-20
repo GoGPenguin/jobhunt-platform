@@ -1,0 +1,22 @@
+# Alternative names for the same skill (spec 06; constitution guardrail 3). Matching is
+# case-insensitive. Only true synonyms: never a broader or related name ("Fargate" is not
+# "ECS Fargate": EKS runs on Fargate too; "Docker" is not "Kubernetes"; "AWS" is not "AWS EKS").
+# Reviewed like code: a wrong alias would let a CV claim a skill the master CV doesn't have.
+Kubernetes: [K8s]
+AWS EKS: [EKS, Amazon EKS]
+AWS: [Amazon Web Services]
+AWS CDK: [CDK]
+AWS CodePipeline: [CodePipeline]
+AWS CodeBuild: [CodeBuild]
+ECS Fargate: [Amazon ECS on Fargate]
+ALB: [Application Load Balancer]
+CloudFront: [Amazon CloudFront]
+RDS: [Amazon RDS]
+S3: [Amazon S3]
+IAM: [AWS IAM]
+WAF: [AWS WAF]
+VPC: [Amazon VPC]
+GitLab CI/CD: [GitLab CI]
+Infrastructure as Code: [IaC]
+CI/CD: [CICD]
+TypeScript: [TS]
