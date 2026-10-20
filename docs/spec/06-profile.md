@@ -13,7 +13,7 @@ As the job seeker, I want my facts (master CV) and what I'm looking for (prefere
 In scope:
 
 - The formats (version 1) of `master_cv.yaml` and `preferences.yaml`: Pydantic models, committed JSON Schemas, strict validation with errors naming the entry.
-- `config/skill_aliases.yaml` (in the repo, not personal): alternative names for the same skill (constitution guardrail 3).
+- `jobhunt/profile/skill_aliases.yaml` (in the package, so installed copies and images have it; not personal): alternative names for the same skill (constitution guardrail 3).
 - `jobhunt profile check`: validates both files and reports warnings.
 - Fictional sample profiles in the repo, used by tests and CI and covered by the fixture privacy scan.
 - Converting the user's existing private files (drafted on 2026-10-20) to version 1, keeping all content.
@@ -54,7 +54,7 @@ education: [ { institution, institution_vi, degree, degree_vi, location, start, 
 Validation rules:
 
 - Fact ids are unique slugs across the file.
-- Every skill a fact lists exists in `skills`, by name or by an alias from `skill_aliases.yaml`.
+- Every skill a fact lists exists in `skills`, by name or by an alias from `skill_aliases.yaml` (case-insensitive).
 - Every number a fact lists appears literally in its `en` text (and its `vi` text, when present). This is the base the fabrication validator relies on.
 - Dates are `YYYY-MM`, and an end is not before its start.
 - Unknown keys are rejected (typos surface).
@@ -93,10 +93,10 @@ Validation rules:
 - Unique market names.
 - Unknown keys are rejected.
 
-## `config/skill_aliases.yaml`
+## `skill_aliases.yaml` (inside the package)
 
 ```yaml
-Kubernetes: [K8s, k8s]
+Kubernetes: [K8s]          # matching is case-insensitive
 AWS EKS: [EKS, Amazon EKS]
 GitLab CI/CD: [GitLab CI]
 ```
