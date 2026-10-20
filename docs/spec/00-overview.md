@@ -128,7 +128,7 @@ Ordered job-hunt first (see section 12): the tool is useful daily in Docker Comp
 ## 13. Spec-driven workflow
 
 - **Constitution** (`docs/spec/constitution.md`): the guardrails in section 4, the tech choices, and coding standards (Python 3.12, typing, tests first).
-- **One spec per feature**, in this order: canonical-job-schema, source-framework, collector-runtime, dedupe-store, notifications, profile, matcher, job-summary, tailor-validator, deploy-gitops, observability-slo.
+- **One spec per feature**, in this order: canonical-job-schema, source-framework, collector-runtime, dedupe-store, notifications, profile, matcher, job-summary, tailor-validator, approval-tracker, deploy-gitops, platform-security, scaling-delivery, infra-terraform, observability-slo.
 - **For each spec:** user story, acceptance criteria, edge cases, test plan. Then a plan, then a task list, then implement task by task.
 - **Review gate:** after each task, record what was verified (security groups, IAM scope, secrets, cost) in `docs/decisions/`.
 - **Rule for Claude:** it may not add a dependency or source without a spec change.
