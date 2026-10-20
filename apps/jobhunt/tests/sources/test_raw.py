@@ -98,7 +98,9 @@ class TestRedactEmail:
         msg = email.message_from_bytes(
             redact_email(make_email(self.TEXT, self.HTML)), policy=policy.default
         )
-        assert msg["List-Unsubscribe"] == (
+        # strip(): Python 3.12.3 keeps the folding space when reading a header folded right
+        # after the colon (fixed in later 3.12 releases); parsers must strip header values too.
+        assert str(msg["List-Unsubscribe"]).strip() == (
             "<https://www.linkedin.com/mysettings-api/settingsApiEmailSubscriptionPost>"
         )
 

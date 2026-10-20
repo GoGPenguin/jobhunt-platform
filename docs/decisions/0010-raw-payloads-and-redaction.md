@@ -19,3 +19,7 @@ Spec: [02-source-framework](../spec/02-source-framework.md); plan [02A](../plans
 - **On the two real LinkedIn sample emails** (outside the test suite, files stay private): after redaction there are 0 occurrences of `otpToken`, `midToken`, `midSig`, `trkEmail`, `lipi=` and `loid=`, and all 17 job ids are still present (11 + 6).
 - The first real-sample run found what the synthetic tests missed: tokens in the `List-Unsubscribe` header and the `loid` unsubscribe id. Both were added as tests, then fixed.
 - No new dependencies, no secrets, cost $0.
+
+## Follow-up: CI failure on Python 3.12.3
+
+The first push failed in CI on one test (`test_redacts_links_in_headers`) while passing locally. Cause: CI uses the runner's Python 3.12.3, the dev machine uv's 3.12.14, and 3.12.3's `email` package keeps the folding space when reading a header folded right after the colon (`' <https://…>'`). Reproduced locally with `uv run --python 3.12.3`. The redaction output was correct; the test now strips the header value, as parsers must when reading headers. All 224 tests pass on both 3.12.3 and 3.12.14.
