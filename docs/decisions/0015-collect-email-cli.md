@@ -25,6 +25,8 @@ Spec: [02-source-framework](../spec/02-source-framework.md), phase A; plan [02A]
 - **Real run on the two LinkedIn sample emails** with the installed `jobhunt` command and the user's private config: exit 0, 2 routed, 14 jobs, 2 duplicates, 0 dead letters, no token in the output. The output file was deleted afterwards.
 - Private `~/.config/jobhunt/sources.yaml` created from the sample (mode 600).
 
-## Still open
+## Manual IMAP check (2026-10-20)
 
-- **Manual IMAP check** against the real Gmail label. It needs the user's app password, so it is the user's step (see plan 02A, "Setup").
+Run by the user against the real Gmail `jobhunt` label (`make collect-email SINCE=7d`): 4 emails, 4 routed (DKIM passed), 0 unauthenticated, 19 jobs, 5 duplicates, 0 dead letters, 0 parser errors. Every email yielded jobs (6, 3, 8, 2 new ones); all are the two LinkedIn kinds seen in the samples ("Jobs You Might Be Interested In", "Viewed Jobs"). Two `raw_ref`s equal those computed earlier from the downloaded `.eml` samples, confirming the same email has the same identity via IMAP and via file.
+
+During setup an app password was typed into the assistant chat by mistake (a `!` command). It was treated as exposed: never used or stored, and the user was asked to revoke it and create a new one, writing it into `secrets.env` from a separate terminal.
