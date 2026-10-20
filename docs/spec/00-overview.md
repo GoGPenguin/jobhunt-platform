@@ -107,6 +107,7 @@ Ordered job-hunt first (see section 12): the tool is useful daily in Docker Comp
 - **Generality:** works for any field. Nothing about a profession is hardcoded; it all comes from the profile. One person per deployment.
 - **My profile:** my own target roles, levels, markets and relocation destinations live in my private `preferences.yaml`, not in this repo.
 - **Summaries:** generated for the top 10-20 jobs a day (the ones already going to the LLM) and for any job requested from Telegram. Content: TL;DR, must-have versus nice-to-have requirements, fit and gaps against the master CV, red flags. Fit claims follow the no-fabrication rule.
+- **Build order after spec 02 phase A (2026-10-20):** storage (dedupe-store) and the Telegram digest (notifications) come before collector-runtime and spec 02 phases B–D, so the tool is useful every day as early as possible. Spec numbers keep the original order.
 - **Default sources and markets:** Vietnamese job platforms and the Vietnam market are enabled by default; LinkedIn (job-alert emails and saved URLs only) is enabled for every market. Every other source, market and region is optional and chosen by the user in config. Nothing is fixed in code.
 - **Apply-assist:** after approval, send a package via Telegram (tailored CV PDF, cover letter, apply link). I apply manually and confirm; the tracker is updated on confirmation. No browser form-filling.
 - **Phase order:** matcher, tailor and tracker (weeks 3-4) come before the Kubernetes move (weeks 5-6).
@@ -129,7 +130,7 @@ Ordered job-hunt first (see section 12): the tool is useful daily in Docker Comp
 ## 13. Spec-driven workflow
 
 - **Constitution** (`docs/spec/constitution.md`): the guardrails in section 4, the tech choices, and coding standards (Python 3.12, typing, tests first).
-- **One spec per feature**, in this order: canonical-job-schema, source-framework, collector-runtime, dedupe-store, notifications, profile, matcher, job-summary, tailor-validator, approval-tracker, deploy-gitops, platform-security, scaling-delivery, infra-terraform, observability-slo.
+- **One spec per feature**, in this order: canonical-job-schema, source-framework, dedupe-store, notifications, collector-runtime, profile, matcher, job-summary, tailor-validator, approval-tracker, deploy-gitops, platform-security, scaling-delivery, infra-terraform, observability-slo.
 - **For each spec:** user story, acceptance criteria, edge cases, test plan. Then a plan, then a task list, then implement task by task.
 - **Review gate:** after each task, record what was verified (security groups, IAM scope, secrets, cost) in `docs/decisions/`.
 - **Rule for Claude:** it may not add a dependency or source without a spec change.
