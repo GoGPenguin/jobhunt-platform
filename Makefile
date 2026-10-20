@@ -36,10 +36,11 @@ schema-check:
 
 check: lint typecheck test schema-check
 
-# Dry run: read the Gmail alert label and print jobs as JSON lines. SINCE=3d by default;
-# EML="file.eml ..." reads local files instead of IMAP (paths relative to apps/jobhunt).
+# Read the Gmail alert label (only new mail) and store jobs; prints new/updated jobs as JSON
+# lines. SINCE=3d by default; EML="file.eml ..." reads local files instead of IMAP (paths
+# relative to apps/jobhunt); DRY_RUN=1 prints everything and needs no database.
 collect-email:
-	$(RUN) jobhunt collect email --since $(or $(SINCE),3d) $(if $(EML),--eml $(EML))
+	$(RUN) jobhunt collect email --since $(or $(SINCE),3d) $(if $(EML),--eml $(EML)) $(if $(DRY_RUN),--dry-run)
 
 # Postgres for the Docker Compose phase (spec 04). db-up creates missing DB passwords first.
 db-up:

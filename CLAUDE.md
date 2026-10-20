@@ -51,7 +51,8 @@ Run from the repo root. uv manages Python (pinned to an exact version in `apps/j
 - Fixtures are public: fictional content only. `tests/test_fixture_privacy.py` fails on tokens, non-example email addresses, and personal strings listed in the private `~/.config/jobhunt/privacy-scan.txt`
 - Single test: `uv run --directory apps/jobhunt pytest tests/test_smoke.py::test_package_imports`
 - Add a dependency (only after spec approval): `uv add --directory apps/jobhunt <pkg>`
-- `make collect-email` (`SINCE=3d`, `EML="a.eml b.eml"`) — dry run of `jobhunt collect email`: reads the Gmail label read-only (or local .eml files) and prints jobs as JSON lines; config in `~/.config/jobhunt/`
+- `make collect-email` (`SINCE=3d`, `EML="a.eml b.eml"`, `DRY_RUN=1`) — `jobhunt collect email`: reads the Gmail label read-only (only emails not stored yet), stores jobs, prints new/updated ones as JSON lines; `DRY_RUN=1` needs no database. Config in `~/.config/jobhunt/`
+- `jobhunt reparse [--source ID]` — re-run current parsers over stored raw payloads (after a parser fix and version bump); `jobhunt db prune-raw [--older-than 365d]` — raw-payload retention
 - `make db-up` / `make db-down` — Postgres 18 + pgvector in Docker Compose (127.0.0.1 only); `db-up` first generates missing DB passwords into `secrets.env` (never type them)
 - `make db-migrate` — `jobhunt db bootstrap` (roles, database; as admin) then `jobhunt db migrate` (SQL files in `jobhunt/store/migrations/`, as `jobhunt_owner`). The app connects as `jobhunt_app` (rows only, no DDL)
 - `make test-db` — store tests against a throwaway Postgres (port 55432, in memory, removed afterwards); CI runs them via a service container. Without `JOBHUNT_TEST_DATABASE_ADMIN_URL`, Postgres tests are skipped

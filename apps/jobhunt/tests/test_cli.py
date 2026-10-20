@@ -1,17 +1,19 @@
 import imaplib
 import json
 import shutil
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from email.message import EmailMessage
 from pathlib import Path
 from typing import Any
 
+import psycopg
 import pytest
 
 from jobhunt.cli import main, parse_since
 from jobhunt.credentials import read_secrets_file
 from jobhunt.domain.job import ParserInfo
 from jobhunt.sources.registry import REGISTRY, ParserPlugin
+from jobhunt.store.memory import MemoryJobStore
 from jobhunt.store.settings import DB_PASSWORD_KEYS
 
 REPO = Path(__file__).resolve().parents[3]
@@ -31,12 +33,14 @@ def config_dir(tmp_path: Path) -> Path:
 Capture = pytest.CaptureFixture[str]
 
 
-def cmd(config_dir: Path, *args: str) -> list[str]:
-    return ["collect", "email", "--config-dir", str(config_dir), *args]
+def cmd(config_dir: Path, *args: str, dry_run: bool = True) -> list[str]:
+    return ["collect", "email", "--config-dir", str(config_dir), *args] + (
+        ["--dry-run"] if dry_run else []
+    )
 
 
 def run(argv: list[str], capsys: Capture, **kwargs: Any) -> tuple[int, list[dict[str, Any]], str]:
-    code = main(argv, now=lambda: NOW, **kwargs)
+    code = main(argv, **({"now": lambda: NOW} | kwargs))
     out, err = capsys.readouterr()
     return code, [json.loads(line) for line in out.splitlines()], err
 
@@ -197,3 +201,66 @@ def test_db_missing_passwords(config_dir: Path, capsys: Capture) -> None:
     code, _, err = run(["db", "migrate", "--config-dir", str(config_dir)], capsys, env={})
     assert code == 2
     assert "JOBHUNT_DB_OWNER_PASSWORD" in err
+
+
+# Storing (plan 04 task 6)
+
+
+@pytest.fixture
+def shared_store() -> MemoryJobStore:
+    return MemoryJobStore()
+
+
+def storing(config_dir: Path, store: MemoryJobStore) -> dict[str, Any]:
+    (config_dir / "secrets.env").write_text("JOBHUNT_DB_APP_PASSWORD=app-secret-123\n")
+    (config_dir / "secrets.env").chmod(0o600)
+    return {"open_store": lambda conninfo: store, "env": {}}
+
+
+def test_collect_stores_then_rerun_reports_unchanged(
+    config_dir: Path, capsys: Capture, shared_store: MemoryJobStore
+) -> None:
+    kwargs = storing(config_dir, shared_store)
+    code, lines, _ = run(cmd(config_dir, "--eml", *EMLS, dry_run=False), capsys, **kwargs)
+    assert code == 0
+    assert sum(line["type"] == "job" for line in lines) == 11
+    assert summary(lines)["new"] == 11
+    code, lines, _ = run(cmd(config_dir, "--eml", *EMLS, dry_run=False), capsys, **kwargs)
+    assert [line["type"] for line in lines] == ["summary"]
+    assert (summary(lines)["new"], summary(lines)["unchanged"]) == (0, 11)
+
+
+def test_reparse_picks_up_mail_stored_before_its_parser_existed(
+    config_dir: Path, capsys: Capture, shared_store: MemoryJobStore
+) -> None:
+    kwargs = storing(config_dir, shared_store)
+    sources = config_dir / "sources.yaml"
+    with_linkedin = sources.read_text()
+    sources.write_text(with_linkedin.replace("@linkedin.com", "@not-linkedin.example"))
+    _, lines, _ = run(cmd(config_dir, "--eml", *EMLS, dry_run=False), capsys, **kwargs)
+    assert (summary(lines)["unknown_sender"], summary(lines)["raw_stored"]) == (2, 2)
+
+    sources.write_text(with_linkedin)
+    code, lines, _ = run(["reparse", "--config-dir", str(config_dir)], capsys, **kwargs)
+    assert code == 0
+    assert summary(lines)["new"] == 11
+
+
+def test_prune_raw(config_dir: Path, capsys: Capture, shared_store: MemoryJobStore) -> None:
+    kwargs = storing(config_dir, shared_store)
+    run(cmd(config_dir, "--eml", *EMLS, dry_run=False), capsys, **kwargs)
+    args = ["db", "prune-raw", "--older-than", "0d", "--config-dir", str(config_dir)]
+    code, lines, _ = run(args, capsys, now=lambda: NOW + timedelta(seconds=1), **kwargs)
+    assert code == 0
+    assert lines == [{"type": "summary", "pruned_raw_payloads": 2}]
+
+
+def test_database_down_exits_4_without_leaking(config_dir: Path, capsys: Capture) -> None:
+    def unreachable(conninfo: str) -> MemoryJobStore:
+        raise psycopg.OperationalError("connection refused")
+
+    kwargs = storing(config_dir, MemoryJobStore()) | {"open_store": unreachable}
+    code, _, err = run(cmd(config_dir, "--eml", *EMLS, dry_run=False), capsys, **kwargs)
+    assert code == 4
+    assert "connection refused" in err
+    assert "app-secret-123" not in err

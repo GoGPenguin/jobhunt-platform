@@ -1,11 +1,12 @@
 """Command line.
 
-    jobhunt collect email [--since 3d] [--eml FILE ...] [--config-dir ~/.config/jobhunt]
-    jobhunt db init-secrets | bootstrap | migrate
+    jobhunt collect email [--since 3d] [--eml FILE ...] [--dry-run] [--config-dir DIR]
+    jobhunt reparse [--source ID] [--config-dir DIR]
+    jobhunt db init-secrets | bootstrap | migrate | prune-raw [--older-than 365d]
 
-`collect email` prints one JSON object per line on stdout: {"type": "job" | "dead_letter" |
-"summary", ...}. Logs and errors go to stderr, with every known password redacted.
-Exit codes: 0 ok, 2 config error, 3 mail server error, 4 database error. See plans 02A and 04.
+stdout gets one JSON object per line ({"type": "job" | "dead_letter" | "summary", ...}); logs
+and errors go to stderr with every known password redacted. Exit codes: 0 ok, 2 config error,
+3 mail server error, 4 database error. See plans 02A and 04.
 """
 
 import argparse
@@ -13,30 +14,30 @@ import json
 import logging
 import os
 import sys
-from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
+from contextlib import AbstractContextManager
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
-from typing import Any, TextIO
 
 import psycopg
 
-import jobhunt.sources.parsers  # noqa: F401 - registers the parsers
 from jobhunt.config_files import ConfigError
 from jobhunt.credentials import ensure_secrets, imap_credentials, load_secrets
-from jobhunt.domain.dead_letter import build_jobs
 from jobhunt.logs import configure_logging
+from jobhunt.pipeline import process_payloads
 from jobhunt.preferences import load_accepted_languages
 from jobhunt.sources.config import EmailSection, load_sources
 from jobhunt.sources.imap import ImapClient, TransportError, connect_ssl, fetch_emails
 from jobhunt.sources.raw import RawPayload
 from jobhunt.sources.registry import REGISTRY
-from jobhunt.sources.routing import route
 from jobhunt.store import migrate as db_migrate
+from jobhunt.store.port import JobStore
+from jobhunt.store.postgres import PostgresJobStore
 from jobhunt.store.settings import (
     ADMIN_PASSWORD,
     ADMIN_ROLE,
     APP_PASSWORD,
+    APP_ROLE,
     DB_PASSWORD_KEYS,
     OWNER_PASSWORD,
     OWNER_ROLE,
@@ -48,7 +49,8 @@ log = logging.getLogger("jobhunt.cli")
 
 DEFAULT_CONFIG_DIR = Path.home() / ".config" / "jobhunt"
 EXIT_OK, EXIT_CONFIG, EXIT_TRANSPORT, EXIT_DATABASE = 0, 2, 3, 4
-OUTCOMES = ("routed", "unknown_sender", "unauthenticated", "disabled")
+
+OpenStore = Callable[[str], AbstractContextManager[JobStore]]
 
 
 def parse_since(value: str, *, today: date) -> date:
@@ -63,169 +65,179 @@ def parse_since(value: str, *, today: date) -> date:
         ) from None
 
 
+def parse_days(value: str) -> timedelta:
+    if value.endswith("d") and value[:-1].isdigit():
+        return timedelta(days=int(value[:-1]))
+    raise ValueError(f"{value!r}: use a day count like 365d")
+
+
 def main(
     argv: Sequence[str] | None = None,
     *,
     now: Callable[[], datetime] = lambda: datetime.now(UTC),
     connect: Callable[[str, int], ImapClient] = connect_ssl,
     env: Mapping[str, str] = os.environ,
+    open_store: OpenStore = PostgresJobStore,
 ) -> int:
     args = _arguments().parse_args(argv)
-    level = logging.DEBUG if args.verbose else logging.INFO
-    configure_logging(stream=sys.stderr, level=level)
-    if args.command == "db":
-        return _db(args.action, args.config_dir, env, level)
-    return _collect_email(args, now, connect, env, level)
-
-
-def _collect_email(
-    args: argparse.Namespace,
-    now: Callable[[], datetime],
-    connect: Callable[[str, int], ImapClient],
-    env: Mapping[str, str],
-    level: int,
-) -> int:
-    config_dir: Path = args.config_dir
+    run = _Run(args, now, env, logging.DEBUG if args.verbose else logging.INFO, open_store)
+    configure_logging(stream=sys.stderr, level=run.level)
     try:
-        config = load_sources(config_dir / "sources.yaml", known_parsers=REGISTRY.names())
-        if config.email is None:
-            raise ConfigError(f"{config_dir / 'sources.yaml'}: no email section")
-        accepted = load_accepted_languages(config_dir / "preferences.yaml")
-        since = parse_since(args.since, today=now().astimezone().date())
-        if args.eml:
-            payloads = [RawPayload.from_email(p.read_bytes(), fetched_at=now()) for p in args.eml]
-        else:
-            creds = imap_credentials(env=env, secrets_path=config_dir / "secrets.env")
-            configure_logging(
-                secrets=[creds.password.get_secret_value()], stream=sys.stderr, level=level
-            )
-            payloads = fetch_emails(config.email.imap, creds, since=since, now=now, connect=connect)
+        if args.command == "db":
+            return run.db(args.action)
+        if args.command == "reparse":
+            return run.reparse()
+        return run.collect_email(connect)
     except (ConfigError, ValueError, OSError) as exc:
         log.error("%s", exc)  # logged, so a secret in the message is redacted
         return EXIT_CONFIG
     except TransportError as exc:
         log.error("%s", exc)
         return EXIT_TRANSPORT
-    _process(payloads, config.email, accepted, now, sys.stdout)
-    return EXIT_OK
+    except (psycopg.Error, db_migrate.MigrationError) as exc:
+        settings = DatabaseSettings.from_env(env)
+        log.error("database %s:%s: %s", settings.host, settings.port, str(exc).strip())
+        return EXIT_DATABASE
 
 
-def _process(
-    payloads: list[RawPayload],
-    email: EmailSection,
-    accepted: frozenset[str] | None,
-    now: Callable[[], datetime],
-    out: TextIO,
-) -> None:
-    counts: Counter[str] = Counter()
-    dropped: Counter[str] = Counter()
-    unknown: Counter[str] = Counter()
-    seen: set[tuple[str, str]] = set()
-    for payload in payloads:
-        routed = route(payload, email.sources, trusted_authserv_id=email.imap.trusted_authserv_id)
-        counts[routed.outcome] += 1
-        if routed.outcome == "unknown_sender":
-            unknown[routed.sender_domain or "(no sender)"] += 1
-        if routed.outcome != "routed" or routed.source is None:
-            continue
-        plugin = REGISTRY.get(routed.source.parser)
-        try:
-            records = plugin.parse(payload)
-        except Exception:
-            log.exception("parser %s failed on %s", plugin.info.name, payload.raw_ref)
-            counts["parser_errors"] += 1
-            continue
-        result = build_jobs(
-            records,
-            source=routed.source.id,
-            parser=plugin.info,
-            raw_ref=payload.raw_ref,
-            accepted_languages=accepted,
-            now=now,
-        )
-        dropped.update(result.dropped_languages)
-        for job in result.jobs:
-            if (job.source, job.external_id) in seen:
-                counts["duplicates"] += 1
-                continue
-            seen.add((job.source, job.external_id))
-            counts["jobs"] += 1
-            _emit(out, "job", job.model_dump(mode="json"))
-        for letter in result.dead_letters:
-            counts["dead_letters"] += 1
-            _emit(out, "dead_letter", letter.model_dump(mode="json"))
+class _Run:
+    """One command invocation: arguments, clock, environment and where secrets live."""
 
-    summary: dict[str, Any] = {"emails": len(payloads)}
-    summary |= {outcome: counts[outcome] for outcome in OUTCOMES}
-    summary |= {k: counts[k] for k in ("jobs", "duplicates", "dead_letters")}
-    summary |= {
-        "dropped_languages": dict(dropped),
-        "parser_errors": counts["parser_errors"],
-        "unknown_senders": dict(unknown),
-    }
-    _emit(out, "summary", summary)
+    def __init__(
+        self,
+        args: argparse.Namespace,
+        now: Callable[[], datetime],
+        env: Mapping[str, str],
+        level: int,
+        open_store: OpenStore,
+    ) -> None:
+        self.args, self.now, self.env, self.level = args, now, env, level
+        self.open_store = open_store
+        self.config_dir: Path = args.config_dir
+        self.secrets_path = self.config_dir / "secrets.env"
+        self.settings = DatabaseSettings.from_env(env)
+        self._redacted: list[str] = []
 
+    def redact(self, *secrets: str) -> None:
+        self._redacted += secrets
+        configure_logging(secrets=self._redacted, stream=sys.stderr, level=self.level)
 
-def _db(action: str, config_dir: Path, env: Mapping[str, str], level: int) -> int:
-    secrets_path = config_dir / "secrets.env"
-    try:
-        if action == "init-secrets":
-            ensure_secrets(secrets_path, DB_PASSWORD_KEYS, out=sys.stderr)
+    def email_config(self) -> tuple[EmailSection, frozenset[str] | None]:
+        sources = self.config_dir / "sources.yaml"
+        config = load_sources(sources, known_parsers=REGISTRY.names())
+        if config.email is None:
+            raise ConfigError(f"{sources}: no email section")
+        return config.email, load_accepted_languages(self.config_dir / "preferences.yaml")
+
+    def app_conninfo(self) -> str:
+        password = load_secrets([APP_PASSWORD], self.env, self.secrets_path)[APP_PASSWORD]
+        self.redact(password)
+        return conninfo(self.settings, APP_ROLE, password)
+
+    def collect_email(self, connect: Callable[[str, int], ImapClient]) -> int:
+        email, accepted = self.email_config()
+        since = parse_since(self.args.since, today=self.now().astimezone().date())
+
+        def payloads(store: JobStore | None) -> list[RawPayload]:
+            if self.args.eml:
+                return [
+                    RawPayload.from_email(p.read_bytes(), fetched_at=self.now())
+                    for p in self.args.eml
+                ]
+            creds = imap_credentials(env=self.env, secrets_path=self.secrets_path)
+            self.redact(creds.password.get_secret_value())
+            known = store.known_raw_refs if store else None
+            return fetch_emails(
+                email.imap, creds, since=since, now=self.now, connect=connect, known=known
+            )
+
+        if self.args.dry_run:
+            process_payloads(
+                payloads(None), email, accepted=accepted, now=self.now, out=sys.stdout, store=None
+            )
             return EXIT_OK
-        passwords = load_secrets(DB_PASSWORD_KEYS, env, secrets_path)
-    except ConfigError as exc:
-        log.error("%s", exc)
-        return EXIT_CONFIG
-    configure_logging(secrets=passwords.values(), stream=sys.stderr, level=level)
-    settings = DatabaseSettings.from_env(env)
-    try:
+        with self.open_store(self.app_conninfo()) as store:
+            process_payloads(
+                payloads(store), email, accepted=accepted, now=self.now, out=sys.stdout, store=store
+            )
+        return EXIT_OK
+
+    def reparse(self) -> int:
+        email, accepted = self.email_config()
+        app = self.app_conninfo()
+        with self.open_store(app) as reader, self.open_store(app) as writer:
+            process_payloads(
+                reader.raw_payloads(),
+                email,
+                accepted=accepted,
+                now=self.now,
+                out=sys.stdout,
+                store=writer,
+                only_source=self.args.source,
+            )
+        return EXIT_OK
+
+    def db(self, action: str) -> int:
+        if action == "init-secrets":
+            ensure_secrets(self.secrets_path, DB_PASSWORD_KEYS, out=sys.stderr)
+            return EXIT_OK
+        if action == "prune-raw":
+            cutoff = self.now() - parse_days(self.args.older_than)
+            with self.open_store(self.app_conninfo()) as store:
+                pruned = store.prune_raw(older_than=cutoff)
+            sys.stdout.write(json.dumps({"type": "summary", "pruned_raw_payloads": pruned}) + "\n")
+            return EXIT_OK
+        passwords = load_secrets(DB_PASSWORD_KEYS, self.env, self.secrets_path)
+        self.redact(*passwords.values())
         if action == "bootstrap":
-            admin = conninfo(settings, ADMIN_ROLE, passwords[ADMIN_PASSWORD], dbname="postgres")
+            admin = conninfo(self.settings, ADMIN_ROLE, passwords[ADMIN_PASSWORD], "postgres")
             db_migrate.bootstrap(
                 admin,
-                settings,
+                self.settings,
                 owner_password=passwords[OWNER_PASSWORD],
                 app_password=passwords[APP_PASSWORD],
             )
-            log.info("roles and database %r ready", settings.name)
+            log.info("roles and database %r ready", self.settings.name)
         else:
-            applied = db_migrate.migrate(conninfo(settings, OWNER_ROLE, passwords[OWNER_PASSWORD]))
+            owner = conninfo(self.settings, OWNER_ROLE, passwords[OWNER_PASSWORD])
+            applied = db_migrate.migrate(owner)
             log.info("applied %s", ", ".join(applied) if applied else "nothing: up to date")
-    except db_migrate.MigrationError as exc:
-        log.error("%s", exc)
-        return EXIT_DATABASE
-    except psycopg.Error as exc:
-        log.error("database %s:%s: %s", settings.host, settings.port, str(exc).strip())
-        return EXIT_DATABASE
-    return EXIT_OK
-
-
-def _emit(out: TextIO, kind: str, data: dict[str, Any]) -> None:
-    out.write(json.dumps({"type": kind, **data}, ensure_ascii=False) + "\n")
+        return EXIT_OK
 
 
 def _arguments() -> argparse.ArgumentParser:
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument("--config-dir", type=Path, default=DEFAULT_CONFIG_DIR)
+    common.add_argument("-v", "--verbose", action="store_true")
+
     parser = argparse.ArgumentParser(prog="jobhunt", description="JobHunt platform")
     commands = parser.add_subparsers(dest="command", required=True)
+
     collect = commands.add_parser("collect", help="collect jobs from sources")
     kinds = collect.add_subparsers(dest="kind", required=True)
-    email = kinds.add_parser("email", help="parse job-alert emails (dry run, JSON lines)")
+    email = kinds.add_parser("email", parents=[common], help="collect job-alert emails")
     email.add_argument("--since", default="3d", help="e.g. 3d or 2026-10-17 (default 3d)")
     email.add_argument(
         "--eml", nargs="+", type=Path, metavar="FILE", help="read .eml files instead of IMAP"
     )
-    email.add_argument("--config-dir", type=Path, default=DEFAULT_CONFIG_DIR)
-    email.add_argument("-v", "--verbose", action="store_true")
+    email.add_argument(
+        "--dry-run", action="store_true", help="print all jobs; no database needed or written"
+    )
 
-    db = commands.add_parser("db", help="database setup (Docker Compose phase)")
+    reparse = commands.add_parser(
+        "reparse", parents=[common], help="re-run current parsers over stored raw payloads"
+    )
+    reparse.add_argument("--source", help="only payloads routed to this source id")
+
+    db = commands.add_parser("db", parents=[common], help="database setup and maintenance")
     db.add_argument(
         "action",
-        choices=["init-secrets", "bootstrap", "migrate"],
-        help="init-secrets: add missing DB passwords to secrets.env; bootstrap: create roles "
-        "and database (as admin); migrate: apply pending migrations (as owner)",
+        choices=["init-secrets", "bootstrap", "migrate", "prune-raw"],
+        help="init-secrets: add missing DB passwords to secrets.env; bootstrap: roles and "
+        "database (as admin); migrate: apply migrations (as owner); prune-raw: delete old raw "
+        "payloads",
     )
-    db.add_argument("--config-dir", type=Path, default=DEFAULT_CONFIG_DIR)
-    db.add_argument("-v", "--verbose", action="store_true")
+    db.add_argument("--older-than", default="365d", help="for prune-raw (default 365d)")
     return parser
 
 

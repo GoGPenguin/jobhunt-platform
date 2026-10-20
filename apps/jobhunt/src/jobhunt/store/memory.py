@@ -2,6 +2,8 @@
 
 from collections.abc import Iterable, Iterator
 from datetime import datetime
+from types import TracebackType
+from typing import Self
 
 from jobhunt.domain.dead_letter import BuildResult, DeadLetter
 from jobhunt.sources.raw import RawPayload
@@ -22,6 +24,17 @@ class MemoryJobStore:
         self._raw: dict[str, RawPayload] = {}
         self._jobs: dict[tuple[str, str], StoredJob] = {}
         self._dead: dict[str, DeadLetter] = {}
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
+        return None
 
     def known_raw_refs(self, raw_refs: Iterable[str]) -> set[str]:
         return {ref for ref in raw_refs if ref in self._raw}
