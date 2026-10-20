@@ -111,6 +111,7 @@ Ordered job-hunt first (see section 12): the tool is useful daily in Docker Comp
 - **Apply-assist:** after approval, send a package via Telegram (tailored CV PDF, cover letter, apply link). I apply manually and confirm; the tracker is updated on confirmation. No browser form-filling.
 - **Phase order:** matcher, tailor and tracker (weeks 3-4) come before the Kubernetes move (weeks 5-6).
 - **Output languages:** English, plus Vietnamese for Vietnamese-language postings.
+- **Posting languages:** the profile lists the posting languages to keep; others are dropped at collection. Jobs whose language is still unknown are kept until their description is fetched.
 - **Repo visibility:** public on GitHub. `master_cv.yaml`, personal data, job data and secrets stay out of the repo; the repo ships a sample CV for tests and demos.
 - **Profile location:** `~/.config/jobhunt/master_cv.yaml` and `~/.config/jobhunt/preferences.yaml`, outside the repo. Each fact has an id, English and Vietnamese text, and the skills and numbers it supports.
 - **Vietnamese output:** Vietnamese texts live in `master_cv.yaml` next to the English ones (drafted from English, marked `vi_reviewed` until checked). The LLM selects and orders facts for Vietnamese CVs but never translates, so the validator still applies.

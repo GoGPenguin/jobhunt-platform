@@ -79,7 +79,9 @@ Applied by the model, so every parser gets it for free:
 
 - Building a `Job` from invalid data raises a validation error listing every failing field, not just the first.
 - `posted_at` later than `collected_at` + 1 day is invalid (a sign of a parsing bug).
-- The parser layer turns a validation error into a dead-letter result containing `source`, `raw_ref`, `parser`, the field errors and the time. The result format is defined here; where it is stored is the dedupe-store's job. One bad record never stops the rest of a batch.
+- The parser layer turns a validation error into a dead-letter result containing `source`, `raw_ref`, `parser`, the field errors, the record the parser produced, and the time. The result format is defined here; where it is stored is the dedupe-store's job. One bad record never stops the rest of a batch.
+- `source`, `parser` and `raw_ref` are given once per batch (one raw payload, e.g. an API response or an alert email, usually holds many jobs), so even a broken record's dead letter points to its payload.
+- **Language filter:** a batch can be given the posting languages the profile accepts (`preferences.yaml`). Valid jobs in any other detected language are dropped and counted per language, not stored. Jobs with language `unknown` are always kept, because most alert-email jobs have no description yet; they are checked again once their page is fetched.
 
 ## Versioning
 
@@ -96,6 +98,7 @@ Applied by the model, so every parser gets it for free:
 - **S4:** A `Job` round-trips through JSON (serialize, then parse) to an equal object, and attempting to change a field after building fails.
 - **S5:** `schemas/job.v1.json` is generated from the model, committed, and a CI check fails when it is stale.
 - **S6:** An invalid record in a batch of three produces one dead-letter result and two valid jobs.
+- **S7:** With accepted languages `vi` and `en`, a Japanese-language job is dropped and counted, while `vi`, `en` and `unknown` jobs are kept.
 
 ## Edge cases
 
@@ -124,6 +127,8 @@ Applied by the model, so every parser gets it for free:
 ## Decisions
 
 Added during task 4 (2026-10-20): empty descriptions allowed, strict-on-parse / lenient-on-read, salary periods `week`, `day`, `unknown`.
+
+Added during task 6 (2026-10-20): dead letters keep the parser's record; batch-level `raw_ref`; language filter at collection, `unknown` kept.
 
 1. **Regions are open.** Any well-formed region label is accepted; region definitions live in configuration.
 2. **Code lists are bundled.** Country, currency and language codes ship as small lists in the repo. No new dependency.
