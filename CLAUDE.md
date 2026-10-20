@@ -47,6 +47,8 @@ Run from the repo root. uv manages Python (pinned to an exact version in `apps/j
 - `make check` — ruff lint + format check, `mypy --strict`, pytest, schema drift check (what CI runs)
 - `make test`, `make lint`, `make typecheck`, `make format`
 - `make schema` — regenerate `schemas/*.json` after changing a model; commit them with the model change
+- `make golden` — rewrite parser golden files (`tests/fixtures/sources/<parser>/<case>/expected.json`) after an intended parser change; review the diff and bump the parser version
+- Fixtures are public: fictional content only. `tests/test_fixture_privacy.py` fails on tokens, non-example email addresses, and personal strings listed in the private `~/.config/jobhunt/privacy-scan.txt`
 - Single test: `uv run --directory apps/jobhunt pytest tests/test_smoke.py::test_package_imports`
 - Add a dependency (only after spec approval): `uv add --directory apps/jobhunt <pkg>`
 - `make up` / `make down` arrive with Docker Compose in the collector-runtime spec.

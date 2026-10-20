@@ -1,7 +1,7 @@
 APP := apps/jobhunt
 RUN := uv run --locked --directory $(APP)
 
-.PHONY: install lint format typecheck test schema schema-check check
+.PHONY: install lint format typecheck test golden schema schema-check check
 
 install:
 	uv sync --locked --directory $(APP)
@@ -19,6 +19,10 @@ typecheck:
 
 test:
 	$(RUN) pytest
+
+# Rewrite parser golden files (tests/fixtures/sources/*/*/expected.json); review the diff.
+golden:
+	JOBHUNT_UPDATE_GOLDEN=1 $(RUN) pytest tests/sources/test_golden.py
 
 # JSON Schemas in schemas/ are generated from the models; paths are relative to $(APP).
 schema:

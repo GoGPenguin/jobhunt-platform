@@ -1,0 +1,252 @@
+{
+  "jobs": [
+    {
+      "schema_version": 1,
+      "source": "linkedin-email",
+      "external_id": "1000000101",
+      "url": "https://www.linkedin.com/jobs/view/1000000101/",
+      "title": "Senior Platform Engineer",
+      "company": "Lumen Robotics",
+      "description": "",
+      "description_truncated": false,
+      "language": "unknown",
+      "locations": [
+        {
+          "city": "Đà Nang",
+          "region": null,
+          "country": null
+        }
+      ],
+      "location_raw": "Đà Nang",
+      "workplace": "unknown",
+      "remote_regions": null,
+      "employment_type": "unknown",
+      "seniority": "unknown",
+      "years_experience_min": null,
+      "years_experience_max": null,
+      "salary": null,
+      "visa_sponsorship": null,
+      "relocation_support": null,
+      "tags": [],
+      "posted_at": null,
+      "expires_at": null,
+      "collected_at": "2026-10-20T00:00:00Z",
+      "attribution": null,
+      "raw_ref": "raw/email/fd22ae2263a907664b0c0c9aae2ae464",
+      "parser": {
+        "name": "linkedin-email",
+        "version": "1.0.0"
+      },
+      "extra": {
+        "email_kind": "Viewed Jobs",
+        "badges": []
+      }
+    },
+    {
+      "schema_version": 1,
+      "source": "linkedin-email",
+      "external_id": "1000000102",
+      "url": "https://www.linkedin.com/jobs/view/1000000102/",
+      "title": "DevOps CI/CD Engineer",
+      "company": "Northwind Cloud",
+      "description": "",
+      "description_truncated": false,
+      "language": "unknown",
+      "locations": [
+        {
+          "city": null,
+          "region": null,
+          "country": "VN"
+        }
+      ],
+      "location_raw": "Vietnam",
+      "workplace": "unknown",
+      "remote_regions": null,
+      "employment_type": "unknown",
+      "seniority": "unknown",
+      "years_experience_min": null,
+      "years_experience_max": null,
+      "salary": null,
+      "visa_sponsorship": null,
+      "relocation_support": null,
+      "tags": [],
+      "posted_at": null,
+      "expires_at": null,
+      "collected_at": "2026-10-20T00:00:00Z",
+      "attribution": null,
+      "raw_ref": "raw/email/fd22ae2263a907664b0c0c9aae2ae464",
+      "parser": {
+        "name": "linkedin-email",
+        "version": "1.0.0"
+      },
+      "extra": {
+        "email_kind": "Viewed Jobs",
+        "badges": []
+      }
+    },
+    {
+      "schema_version": 1,
+      "source": "linkedin-email",
+      "external_id": "1000000103",
+      "url": "https://www.linkedin.com/jobs/view/1000000103/",
+      "title": "Middle DevOps Engineer",
+      "company": "Song Han Software",
+      "description": "",
+      "description_truncated": false,
+      "language": "unknown",
+      "locations": [
+        {
+          "city": null,
+          "region": "Hanoi Capital Region",
+          "country": null
+        }
+      ],
+      "location_raw": "Hanoi Capital Region",
+      "workplace": "unknown",
+      "remote_regions": null,
+      "employment_type": "unknown",
+      "seniority": "unknown",
+      "years_experience_min": null,
+      "years_experience_max": null,
+      "salary": null,
+      "visa_sponsorship": null,
+      "relocation_support": null,
+      "tags": [],
+      "posted_at": null,
+      "expires_at": null,
+      "collected_at": "2026-10-20T00:00:00Z",
+      "attribution": null,
+      "raw_ref": "raw/email/fd22ae2263a907664b0c0c9aae2ae464",
+      "parser": {
+        "name": "linkedin-email",
+        "version": "1.0.0"
+      },
+      "extra": {
+        "email_kind": "Viewed Jobs",
+        "badges": []
+      }
+    },
+    {
+      "schema_version": 1,
+      "source": "linkedin-email",
+      "external_id": "1000000104",
+      "url": "https://www.linkedin.com/jobs/view/1000000104/",
+      "title": "Site Reliability Engineer",
+      "company": "Contoso Labs | Part of Contoso Group",
+      "description": "",
+      "description_truncated": false,
+      "language": "unknown",
+      "locations": [
+        {
+          "city": "Ho Chi Minh City",
+          "region": null,
+          "country": null
+        }
+      ],
+      "location_raw": "Ho Chi Minh City (Hybrid)",
+      "workplace": "hybrid",
+      "remote_regions": null,
+      "employment_type": "unknown",
+      "seniority": "unknown",
+      "years_experience_min": null,
+      "years_experience_max": null,
+      "salary": null,
+      "visa_sponsorship": null,
+      "relocation_support": null,
+      "tags": [],
+      "posted_at": null,
+      "expires_at": null,
+      "collected_at": "2026-10-20T00:00:00Z",
+      "attribution": null,
+      "raw_ref": "raw/email/fd22ae2263a907664b0c0c9aae2ae464",
+      "parser": {
+        "name": "linkedin-email",
+        "version": "1.0.0"
+      },
+      "extra": {
+        "email_kind": "Viewed Jobs",
+        "badges": []
+      }
+    },
+    {
+      "schema_version": 1,
+      "source": "linkedin-email",
+      "external_id": "1000000105",
+      "url": "https://www.linkedin.com/jobs/view/1000000105/",
+      "title": "Kỹ sư DevOps (Junior/Middle)",
+      "company": "Công ty TNHH Phần mềm Sông Hàn",
+      "description": "",
+      "description_truncated": false,
+      "language": "vi",
+      "locations": [
+        {
+          "city": "Singapore",
+          "region": null,
+          "country": "SG"
+        }
+      ],
+      "location_raw": "Singapore, Singapore",
+      "workplace": "unknown",
+      "remote_regions": null,
+      "employment_type": "unknown",
+      "seniority": "unknown",
+      "years_experience_min": null,
+      "years_experience_max": null,
+      "salary": null,
+      "visa_sponsorship": null,
+      "relocation_support": null,
+      "tags": [],
+      "posted_at": null,
+      "expires_at": null,
+      "collected_at": "2026-10-20T00:00:00Z",
+      "attribution": null,
+      "raw_ref": "raw/email/fd22ae2263a907664b0c0c9aae2ae464",
+      "parser": {
+        "name": "linkedin-email",
+        "version": "1.0.0"
+      },
+      "extra": {
+        "email_kind": "Viewed Jobs",
+        "badges": []
+      }
+    },
+    {
+      "schema_version": 1,
+      "source": "linkedin-email",
+      "external_id": "1000000106",
+      "url": "https://www.linkedin.com/jobs/view/1000000106/",
+      "title": "Cloud Engineer",
+      "company": "Fabrikam",
+      "description": "",
+      "description_truncated": false,
+      "language": "unknown",
+      "locations": [],
+      "location_raw": "Remote",
+      "workplace": "remote",
+      "remote_regions": null,
+      "employment_type": "unknown",
+      "seniority": "unknown",
+      "years_experience_min": null,
+      "years_experience_max": null,
+      "salary": null,
+      "visa_sponsorship": null,
+      "relocation_support": null,
+      "tags": [],
+      "posted_at": null,
+      "expires_at": null,
+      "collected_at": "2026-10-20T00:00:00Z",
+      "attribution": null,
+      "raw_ref": "raw/email/fd22ae2263a907664b0c0c9aae2ae464",
+      "parser": {
+        "name": "linkedin-email",
+        "version": "1.0.0"
+      },
+      "extra": {
+        "email_kind": "Viewed Jobs",
+        "badges": []
+      }
+    }
+  ],
+  "dead_letters": [],
+  "dropped_languages": {}
+}

@@ -1,6 +1,6 @@
 import pytest
 
-from jobhunt.domain.codes import COUNTRY_CODES, CURRENCY_CODES, LANGUAGE_CODES
+from jobhunt.domain.codes import COUNTRY_CODES, COUNTRY_NAMES, CURRENCY_CODES, LANGUAGE_CODES
 
 
 @pytest.mark.parametrize("code", ["VN", "JP", "SG", "GB", "US", "DE", "NL", "AU"])
@@ -43,3 +43,17 @@ def test_code_formats() -> None:
     assert all(len(c) == 2 and c.isascii() and c.isupper() for c in COUNTRY_CODES)
     assert all(len(c) == 3 and c.isascii() and c.isupper() for c in CURRENCY_CODES)
     assert all(len(c) == 2 and c.isascii() and c.islower() for c in LANGUAGE_CODES)
+
+
+@pytest.mark.parametrize(
+    ("name", "code"),
+    [("vietnam", "VN"), ("viet nam", "VN"), ("singapore", "SG"), ("south korea", "KR"),
+     ("united states", "US"), ("netherlands", "NL"), ("socialist republic of viet nam", "VN")],
+)  # fmt: skip
+def test_country_names(name: str, code: str) -> None:
+    assert COUNTRY_NAMES[name] == code
+
+
+def test_country_names_are_lowercase_and_map_to_codes() -> None:
+    assert all(name == name.lower() for name in COUNTRY_NAMES)
+    assert set(COUNTRY_NAMES.values()) == COUNTRY_CODES

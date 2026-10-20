@@ -1,0 +1,218 @@
+{
+  "jobs": [
+    {
+      "schema_version": 1,
+      "source": "linkedin-email",
+      "external_id": "1000000201",
+      "url": "https://www.linkedin.com/jobs/view/1000000201/",
+      "title": "DevOps Engineer (Jr-Mid Level | Good English)",
+      "company": "Tailspin Toys",
+      "description": "",
+      "description_truncated": false,
+      "language": "unknown",
+      "locations": [
+        {
+          "city": "Ho Chi Minh City",
+          "region": null,
+          "country": null
+        }
+      ],
+      "location_raw": "Ho Chi Minh City",
+      "workplace": "unknown",
+      "remote_regions": null,
+      "employment_type": "unknown",
+      "seniority": "unknown",
+      "years_experience_min": null,
+      "years_experience_max": null,
+      "salary": null,
+      "visa_sponsorship": null,
+      "relocation_support": null,
+      "tags": [],
+      "posted_at": null,
+      "expires_at": null,
+      "collected_at": "2026-10-20T00:00:00Z",
+      "attribution": null,
+      "raw_ref": "raw/email/f5c83e4ebadcbb7c9bb386a84520612a",
+      "parser": {
+        "name": "linkedin-email",
+        "version": "1.0.0"
+      },
+      "extra": {
+        "email_kind": "Jobs You Might Be Interested In",
+        "badges": [
+          "Apply with resume & profile"
+        ]
+      }
+    },
+    {
+      "schema_version": 1,
+      "source": "linkedin-email",
+      "external_id": "1000000202",
+      "url": "https://www.linkedin.com/jobs/view/1000000202/",
+      "title": "Data platform SRE/Observability Engineer",
+      "company": "Wide World Travel",
+      "description": "",
+      "description_truncated": false,
+      "language": "unknown",
+      "locations": [
+        {
+          "city": null,
+          "region": null,
+          "country": "VN"
+        }
+      ],
+      "location_raw": "Vietnam (Remote)",
+      "workplace": "remote",
+      "remote_regions": null,
+      "employment_type": "unknown",
+      "seniority": "unknown",
+      "years_experience_min": null,
+      "years_experience_max": null,
+      "salary": null,
+      "visa_sponsorship": null,
+      "relocation_support": null,
+      "tags": [],
+      "posted_at": null,
+      "expires_at": null,
+      "collected_at": "2026-10-20T00:00:00Z",
+      "attribution": null,
+      "raw_ref": "raw/email/f5c83e4ebadcbb7c9bb386a84520612a",
+      "parser": {
+        "name": "linkedin-email",
+        "version": "1.0.0"
+      },
+      "extra": {
+        "email_kind": "Jobs You Might Be Interested In",
+        "badges": [
+          "Apply with resume & profile"
+        ]
+      }
+    },
+    {
+      "schema_version": 1,
+      "source": "linkedin-email",
+      "external_id": "1000000203",
+      "url": "https://www.linkedin.com/jobs/view/1000000203/",
+      "title": "DevOps Engineer (AWS/SRE)",
+      "company": "Adventure Works",
+      "description": "",
+      "description_truncated": false,
+      "language": "unknown",
+      "locations": [
+        {
+          "city": "Hanoi",
+          "region": null,
+          "country": null
+        }
+      ],
+      "location_raw": "Hanoi",
+      "workplace": "unknown",
+      "remote_regions": null,
+      "employment_type": "unknown",
+      "seniority": "unknown",
+      "years_experience_min": null,
+      "years_experience_max": null,
+      "salary": null,
+      "visa_sponsorship": null,
+      "relocation_support": null,
+      "tags": [],
+      "posted_at": null,
+      "expires_at": null,
+      "collected_at": "2026-10-20T00:00:00Z",
+      "attribution": null,
+      "raw_ref": "raw/email/f5c83e4ebadcbb7c9bb386a84520612a",
+      "parser": {
+        "name": "linkedin-email",
+        "version": "1.0.0"
+      },
+      "extra": {
+        "email_kind": "Jobs You Might Be Interested In",
+        "badges": []
+      }
+    },
+    {
+      "schema_version": 1,
+      "source": "linkedin-email",
+      "external_id": "1000000204",
+      "url": "https://www.linkedin.com/jobs/view/1000000204/",
+      "title": "Senior DevOps Engineer",
+      "company": "Northwind Cloud",
+      "description": "",
+      "description_truncated": false,
+      "language": "unknown",
+      "locations": [
+        {
+          "city": "Tokyo",
+          "region": "Tokyo",
+          "country": "JP"
+        }
+      ],
+      "location_raw": "Tokyo, Tokyo, Japan (On-site)",
+      "workplace": "onsite",
+      "remote_regions": null,
+      "employment_type": "unknown",
+      "seniority": "unknown",
+      "years_experience_min": null,
+      "years_experience_max": null,
+      "salary": null,
+      "visa_sponsorship": null,
+      "relocation_support": null,
+      "tags": [],
+      "posted_at": null,
+      "expires_at": null,
+      "collected_at": "2026-10-20T00:00:00Z",
+      "attribution": null,
+      "raw_ref": "raw/email/f5c83e4ebadcbb7c9bb386a84520612a",
+      "parser": {
+        "name": "linkedin-email",
+        "version": "1.0.0"
+      },
+      "extra": {
+        "email_kind": "Jobs You Might Be Interested In",
+        "badges": [
+          "Actively recruiting"
+        ]
+      }
+    },
+    {
+      "schema_version": 1,
+      "source": "linkedin-email",
+      "external_id": "1000000205",
+      "url": "https://www.linkedin.com/jobs/view/1000000205/",
+      "title": "Platform Engineer",
+      "company": "Litware",
+      "description": "",
+      "description_truncated": false,
+      "language": "unknown",
+      "locations": [],
+      "location_raw": null,
+      "workplace": "unknown",
+      "remote_regions": null,
+      "employment_type": "unknown",
+      "seniority": "unknown",
+      "years_experience_min": null,
+      "years_experience_max": null,
+      "salary": null,
+      "visa_sponsorship": null,
+      "relocation_support": null,
+      "tags": [],
+      "posted_at": null,
+      "expires_at": null,
+      "collected_at": "2026-10-20T00:00:00Z",
+      "attribution": null,
+      "raw_ref": "raw/email/f5c83e4ebadcbb7c9bb386a84520612a",
+      "parser": {
+        "name": "linkedin-email",
+        "version": "1.0.0"
+      },
+      "extra": {
+        "email_kind": "Jobs You Might Be Interested In",
+        "badges": [
+          "Be an early applicant"
+        ]
+      }
+    }
+  ],
+  "dead_letters": [],
+  "dropped_languages": {}
+}
