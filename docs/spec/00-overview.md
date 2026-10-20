@@ -26,7 +26,7 @@ A personal, Kubernetes-based job-hunt system that collects jobs from many platfo
 - **Human in the loop:** the system finds, scores, tailors and sends me an application package; I apply and click submit myself.
 - **No fabrication:** the LLM may only select, reorder and rephrase facts from `master_cv.yaml`. A validator rejects any skill or number not in that file.
 - **Respect source terms:** check robots.txt and terms per source, poll slowly, cache, identify the User-Agent, keep required attribution.
-- **LinkedIn:** job-alert emails and manual "save URL" only.
+- **LinkedIn:** job-alert emails, manual "save URL" and pasted descriptions only; details otherwise come from the company's own posting. No LinkedIn host is ever requested automatically.
 - **Cost:** AWS Budgets alert at $15, a hard daily LLM token cap, and EKS only for demos with a one-command teardown.
 
 ## 5. Architecture

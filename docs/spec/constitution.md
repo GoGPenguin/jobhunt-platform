@@ -14,7 +14,7 @@ Rules every spec, plan and change must follow. Changing this file is itself a sp
 4. **Summaries are faithful.** A job summary only states what the posting says. Its fit section may claim coverage only by citing master CV fact ids, and anything not covered is listed as a gap. The same validator checks it.
 5. **Profile-driven.** No role, skill, level, market or keyword list is hardcoded. They come from `master_cv.yaml` and `preferences.yaml`, so the system works for any field.
 6. **Real facts only.** Work on this project enters `master_cv.yaml` only after it is implemented and verified, with a link to the decision record in `docs/decisions/` that shows it.
-7. **Respect sources.** Check robots.txt and terms before adding a source. Poll slowly, cache, send an identifying User-Agent, keep required attribution. No scraping LinkedIn, no bypassing logins or captchas. LinkedIn is used only through alert emails and manually saved URLs.
+7. **Respect sources.** Check robots.txt and terms before adding a source. Poll slowly, cache, send an identifying User-Agent, keep required attribution. No scraping LinkedIn, no bypassing logins or captchas. LinkedIn is used only through alert emails, manually saved URLs and descriptions the user pastes; no LinkedIn host is ever requested automatically, enforced in code.
 8. **Personal data stays out of Git.** `master_cv.yaml` and `preferences.yaml` live in `~/.config/jobhunt/`. Job data, credentials and secrets are never committed. The repo is public and ships only a fictional sample profile for tests and demos.
 9. **Cost caps.** AWS Budgets alert at $15 for AWS (EKS demos only, torn down with one command). Hard LLM cap of $0.20/day, enforced in code, not only alerted.
 
