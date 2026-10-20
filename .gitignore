@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+dist/
+build/
+
+# Secrets and local env
+.env
+.env.*
+
+# Personal profile data must never be committed (constitution, guardrail 8).
+# Fictional samples for tests use the *.sample.yaml suffix.
+master_cv.yaml
+preferences.yaml

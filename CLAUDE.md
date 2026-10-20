@@ -21,11 +21,12 @@ Python 3.12 (uv, ruff, mypy --strict, pytest), Pydantic, Postgres+pgvector, k3s/
 
 ## Layout
 
-- `apps/` — application code
+- `apps/jobhunt/` — the one Python package (uv project, src layout) for all services; each service is an entrypoint of it
 - `infra/` — Terraform
 - `deploy/` — Helm charts and ArgoCD config
 - `docs/spec/` — overview, constitution, one spec per feature
-- `docs/decisions/` — per-task verification notes and decision records
+- `docs/plans/` — implementation plan and task list per spec
+- `docs/decisions/` — numbered per-task verification notes and decision records (`NNNN-title.md`)
 
 ## Workflow
 
@@ -34,4 +35,11 @@ was verified (IAM scope, secrets, cost) in docs/decisions/.
 
 ## Commands
 
-make test | make up | make down
+Run from the repo root. uv manages Python 3.12 and the venv in `apps/jobhunt/`.
+
+- `make install` — create the venv from `uv.lock`
+- `make check` — ruff lint + format check, `mypy --strict`, pytest (what CI runs)
+- `make test`, `make lint`, `make typecheck`, `make format`
+- Single test: `uv run --directory apps/jobhunt pytest tests/test_smoke.py::test_package_imports`
+- Add a dependency (only after spec approval): `uv add --directory apps/jobhunt <pkg>`
+- `make up` / `make down` arrive with Docker Compose in the collector-runtime spec.
