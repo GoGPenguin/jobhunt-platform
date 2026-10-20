@@ -1,7 +1,7 @@
 # Plan 06: Profile
 
 Spec: [06-profile](../spec/06-profile.md)
-Status: approved 2026-10-20
+Status: done 2026-10-20 (tasks 1–5; decision records 0029–0033)
 
 ## Design
 
