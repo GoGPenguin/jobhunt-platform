@@ -4,7 +4,7 @@ SECRETS := $(HOME)/.config/jobhunt/secrets.env
 COMPOSE := docker compose --env-file $(SECRETS)
 TEST_COMPOSE := docker compose -p jobhunt-test -f docker-compose.yml -f docker-compose.test.yml
 
-.PHONY: install lint format typecheck test golden schema schema-check check collect-email digest db-up db-down db-migrate test-db
+.PHONY: install lint format typecheck test golden schema schema-check check collect-email digest install-timer uninstall-timer db-up db-down db-migrate test-db
 
 install:
 	uv sync --locked --directory $(APP)
@@ -64,3 +64,16 @@ test-db:
 # Send the Telegram digest of postings not sent yet (spec 05).
 digest:
 	$(RUN) jobhunt digest send
+
+# Daily run on this machine (systemd user timer): collect, then send the digest, at DIGEST_TIME
+# (default 12:00) in preferences.yaml's timezone. Removed when collector-runtime takes over.
+install-timer:
+	$(RUN) jobhunt timer install --uv "$$(command -v uv)" --repo "$(CURDIR)" --at $(or $(DIGEST_TIME),12:00)
+	systemctl --user daemon-reload
+	systemctl --user enable --now jobhunt-daily.timer
+	systemctl --user list-timers jobhunt-daily.timer --no-pager
+
+uninstall-timer:
+	-systemctl --user disable --now jobhunt-daily.timer
+	$(RUN) jobhunt timer remove
+	systemctl --user daemon-reload

@@ -5,6 +5,7 @@
     jobhunt db init-secrets | bootstrap | migrate | prune-raw [--older-than 365d]
     jobhunt digest send [--test] | list [--since 7d]
     jobhunt telegram find-chat
+    jobhunt timer install --uv PATH --repo PATH [--at 12:00] | remove
 
 stdout gets one JSON object per line ({"type": "job" | "dead_letter" | "posting" | "summary",
 ...}); logs and errors go to stderr with every known secret redacted. Exit codes: 0 ok, 2 config
@@ -29,6 +30,7 @@ import psycopg
 from jobhunt.config_files import ConfigError
 from jobhunt.credentials import ensure_secrets, imap_credentials, load_secrets
 from jobhunt.logs import configure_logging
+from jobhunt.notify import timer as daily_timer
 from jobhunt.notify.digest import compose
 from jobhunt.notify.telegram import DEFAULT_API_BASE, TelegramClient, TelegramError
 from jobhunt.pipeline import process_payloads
@@ -112,6 +114,8 @@ def main(
             return run.digest(args.action, open_telegram)
         if args.command == "telegram":
             return run.find_chat(open_telegram)
+        if args.command == "timer":
+            return run.timer(args.action)
         return run.collect_email(connect)
     except DigestBusyError as exc:
         log.error("%s; try again when it has finished", exc)
@@ -281,6 +285,21 @@ class _Run:
             log.warning("no chats yet: send your bot any message in Telegram, then run this again")
         return EXIT_OK
 
+    def timer(self, action: str) -> int:
+        unit_dir: Path = self.args.unit_dir
+        if action == "remove":
+            removed = daily_timer.remove_units(unit_dir)
+            log.info("removed %s", ", ".join(map(str, removed)) or "nothing (not installed)")
+            return EXIT_OK
+        if not self.args.uv or not self.args.repo:
+            raise ConfigError("timer install needs --uv and --repo (use make install-timer)")
+        tz = load_timezone(self.config_dir / "preferences.yaml")
+        written = daily_timer.install_units(
+            unit_dir, repo=self.args.repo, uv=self.args.uv, at=self.args.at, tz=tz
+        )
+        log.info("wrote %s", ", ".join(map(str, written)))
+        return EXIT_OK
+
     def db(self, action: str) -> int:
         if action == "init-secrets":
             ensure_secrets(self.secrets_path, DB_PASSWORD_KEYS, out=sys.stderr)
@@ -354,6 +373,13 @@ def _arguments() -> argparse.ArgumentParser:
 
     telegram = commands.add_parser("telegram", parents=[common], help="Telegram setup")
     telegram.add_argument("action", choices=["find-chat"], help="chats that messaged the bot")
+
+    timer = commands.add_parser("timer", parents=[common], help="daily run on this machine")
+    timer.add_argument("action", choices=["install", "remove"])
+    timer.add_argument("--uv", type=Path, help="install: absolute path of the uv binary")
+    timer.add_argument("--repo", type=Path, help="install: absolute path of this repository")
+    timer.add_argument("--at", default="12:00", help="install: local time HH:MM (default 12:00)")
+    timer.add_argument("--unit-dir", type=Path, default=daily_timer.DEFAULT_UNIT_DIR)
     return parser
 
 
