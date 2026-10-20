@@ -9,8 +9,10 @@ from typing import Any
 import pytest
 
 from jobhunt.cli import main, parse_since
+from jobhunt.credentials import read_secrets_file
 from jobhunt.domain.job import ParserInfo
 from jobhunt.sources.registry import REGISTRY, ParserPlugin
+from jobhunt.store.settings import DB_PASSWORD_KEYS
 
 REPO = Path(__file__).resolve().parents[3]
 LINKEDIN = Path(__file__).parent / "fixtures" / "sources" / "linkedin-email"
@@ -165,3 +167,33 @@ def test_since(since: str, expected: str) -> None:
 def test_bad_since() -> None:
     with pytest.raises(ValueError, match="3d"):
         parse_since("yesterday", today=NOW.date())
+
+
+def test_db_init_secrets_creates_passwords_without_printing(
+    config_dir: Path, capsys: Capture
+) -> None:
+    code, _, err = run(["db", "init-secrets", "--config-dir", str(config_dir)], capsys)
+    assert code == 0
+    values = read_secrets_file(config_dir / "secrets.env")
+    assert set(values) == set(DB_PASSWORD_KEYS)
+    assert "JOBHUNT_DB_ADMIN_PASSWORD" in err
+    assert not any(value in err for value in values.values())
+
+
+def test_db_unreachable_exits_4_without_leaking_passwords(
+    config_dir: Path, capsys: Capture
+) -> None:
+    run(["db", "init-secrets", "--config-dir", str(config_dir)], capsys)
+    passwords = read_secrets_file(config_dir / "secrets.env").values()
+    env = {"JOBHUNT_DB_PORT": "1"}  # nothing listens on port 1
+    for action in ("bootstrap", "migrate"):
+        code, _, err = run(["db", action, "--config-dir", str(config_dir)], capsys, env=env)
+        assert code == 4
+        assert "127.0.0.1:1" in err
+        assert not any(p in err for p in passwords)
+
+
+def test_db_missing_passwords(config_dir: Path, capsys: Capture) -> None:
+    code, _, err = run(["db", "migrate", "--config-dir", str(config_dir)], capsys, env={})
+    assert code == 2
+    assert "JOBHUNT_DB_OWNER_PASSWORD" in err

@@ -7,8 +7,10 @@ Kubernetes phase. See plan 02A, task 3.
 
 import os
 import re
-from collections.abc import Mapping
+import secrets
+from collections.abc import Iterable, Mapping
 from pathlib import Path
+from typing import TextIO
 
 from pydantic import BaseModel, ConfigDict, SecretStr
 
@@ -50,12 +52,39 @@ def read_secrets_file(path: Path) -> dict[str, str]:
     return values
 
 
+def load_secrets(
+    names: Iterable[str], env: Mapping[str, str], secrets_path: Path
+) -> dict[str, str]:
+    """Values for `names`, environment first, then the secrets file. All must be present."""
+    wanted = list(names)
+    values = read_secrets_file(secrets_path) | {k: env[k] for k in wanted if k in env}
+    missing = [k for k in wanted if not values.get(k)]
+    if missing:
+        raise ConfigError(f"missing {', '.join(missing)}: set in the environment or {secrets_path}")
+    return {k: values[k] for k in wanted}
+
+
 def imap_credentials(
     env: Mapping[str, str] = os.environ, secrets_path: Path = DEFAULT_SECRETS_PATH
 ) -> ImapCredentials:
-    from_env = {k: env[k] for k in (IMAP_USER, IMAP_PASSWORD) if k in env}
-    values = read_secrets_file(secrets_path) | from_env
-    missing = [k for k in (IMAP_USER, IMAP_PASSWORD) if not values.get(k)]
-    if missing:
-        raise ConfigError(f"missing {', '.join(missing)}: set in the environment or {secrets_path}")
+    values = load_secrets((IMAP_USER, IMAP_PASSWORD), env, secrets_path)
     return ImapCredentials(user=values[IMAP_USER], password=SecretStr(values[IMAP_PASSWORD]))
+
+
+def ensure_secrets(path: Path, names: Iterable[str], *, out: TextIO) -> list[str]:
+    """Add a random value for each missing name to the secrets file (created with mode 600).
+    Existing values are kept. Prints the names it added, never the values."""
+    existing = read_secrets_file(path)
+    missing = [name for name in names if name not in existing]
+    if not missing:
+        return []
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if not path.exists():
+        path.touch(mode=0o600)
+    text = path.read_text(encoding="utf-8")
+    lines = [f"{name}={secrets.token_urlsafe(32)}" for name in missing]
+    separator = "" if not text or text.endswith("\n") else "\n"
+    path.write_text(text + separator + "\n".join(lines) + "\n", encoding="utf-8")
+    path.chmod(0o600)
+    out.write(f"added to {path}: {', '.join(missing)}\n")
+    return missing

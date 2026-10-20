@@ -22,6 +22,21 @@ jobs:
       # Same interpreter as the dev machine: the exact version in apps/jobhunt/.python-version,
       # downloaded by uv, never the runner's system Python.
       UV_PYTHON_PREFERENCE: only-managed
+      # Store tests run against the service below (a throwaway server, CI-only password).
+      JOBHUNT_TEST_DATABASE_ADMIN_URL: postgresql://postgres:ci-only-password@127.0.0.1:5432/postgres
+    services:
+      postgres:
+        # Same image as docker-compose.yml (PostgreSQL 18.6 + pgvector 0.8.7), pinned by digest.
+        image: pgvector/pgvector:0.8.7-pg18-trixie@sha256:9d9c930220cb9bf2f956d10a8f909cf9973d9672ca0278aef2c1e6facccad2e0
+        env:
+          POSTGRES_PASSWORD: ci-only-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
     steps:
       # Actions are pinned to commit SHAs; Dependabot proposes updates (.github/dependabot.yml).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

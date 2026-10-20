@@ -1,0 +1,26 @@
+# Docker Compose phase (spec 04): Postgres only. The full stack arrives with collector-runtime.
+# Start with `make db-up`; passwords come from ~/.config/jobhunt/secrets.env (`jobhunt db
+# init-secrets`), never from this repo.
+name: jobhunt
+
+services:
+  db:
+    # PostgreSQL 18.6 + pgvector 0.8.7 (Debian trixie), pinned by digest; same image in CI.
+    image: pgvector/pgvector:0.8.7-pg18-trixie@sha256:9d9c930220cb9bf2f956d10a8f909cf9973d9672ca0278aef2c1e6facccad2e0
+    environment:
+      POSTGRES_PASSWORD: ${JOBHUNT_DB_ADMIN_PASSWORD:?run jobhunt db init-secrets first}
+    ports:
+      - "127.0.0.1:${JOBHUNT_DB_PORT:-5432}:5432"  # this machine only
+    volumes:
+      - db-data:/var/lib/postgresql  # PGDATA is /var/lib/postgresql/18/docker
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+volumes:
+  db-data:

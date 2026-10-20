@@ -1,10 +1,11 @@
-"""Command line. Phase A: `jobhunt collect email`, a dry run that prints JSON lines.
+"""Command line.
 
     jobhunt collect email [--since 3d] [--eml FILE ...] [--config-dir ~/.config/jobhunt]
+    jobhunt db init-secrets | bootstrap | migrate
 
-stdout gets one JSON object per line: {"type": "job" | "dead_letter" | "summary", ...}.
-Logs and errors go to stderr, with the IMAP password redacted. Exit codes: 0 ok, 2 config error,
-3 mail server error. See plan 02A task 7.
+`collect email` prints one JSON object per line on stdout: {"type": "job" | "dead_letter" |
+"summary", ...}. Logs and errors go to stderr, with every known password redacted.
+Exit codes: 0 ok, 2 config error, 3 mail server error, 4 database error. See plans 02A and 04.
 """
 
 import argparse
@@ -18,9 +19,11 @@ from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any, TextIO
 
+import psycopg
+
 import jobhunt.sources.parsers  # noqa: F401 - registers the parsers
 from jobhunt.config_files import ConfigError
-from jobhunt.credentials import imap_credentials
+from jobhunt.credentials import ensure_secrets, imap_credentials, load_secrets
 from jobhunt.domain.dead_letter import build_jobs
 from jobhunt.logs import configure_logging
 from jobhunt.preferences import load_accepted_languages
@@ -29,11 +32,22 @@ from jobhunt.sources.imap import ImapClient, TransportError, connect_ssl, fetch_
 from jobhunt.sources.raw import RawPayload
 from jobhunt.sources.registry import REGISTRY
 from jobhunt.sources.routing import route
+from jobhunt.store import migrate as db_migrate
+from jobhunt.store.settings import (
+    ADMIN_PASSWORD,
+    ADMIN_ROLE,
+    APP_PASSWORD,
+    DB_PASSWORD_KEYS,
+    OWNER_PASSWORD,
+    OWNER_ROLE,
+    DatabaseSettings,
+    conninfo,
+)
 
 log = logging.getLogger("jobhunt.cli")
 
 DEFAULT_CONFIG_DIR = Path.home() / ".config" / "jobhunt"
-EXIT_OK, EXIT_CONFIG, EXIT_TRANSPORT = 0, 2, 3
+EXIT_OK, EXIT_CONFIG, EXIT_TRANSPORT, EXIT_DATABASE = 0, 2, 3, 4
 OUTCOMES = ("routed", "unknown_sender", "unauthenticated", "disabled")
 
 
@@ -59,6 +73,18 @@ def main(
     args = _arguments().parse_args(argv)
     level = logging.DEBUG if args.verbose else logging.INFO
     configure_logging(stream=sys.stderr, level=level)
+    if args.command == "db":
+        return _db(args.action, args.config_dir, env, level)
+    return _collect_email(args, now, connect, env, level)
+
+
+def _collect_email(
+    args: argparse.Namespace,
+    now: Callable[[], datetime],
+    connect: Callable[[str, int], ImapClient],
+    env: Mapping[str, str],
+    level: int,
+) -> int:
     config_dir: Path = args.config_dir
     try:
         config = load_sources(config_dir / "sources.yaml", known_parsers=REGISTRY.names())
@@ -140,6 +166,40 @@ def _process(
     _emit(out, "summary", summary)
 
 
+def _db(action: str, config_dir: Path, env: Mapping[str, str], level: int) -> int:
+    secrets_path = config_dir / "secrets.env"
+    try:
+        if action == "init-secrets":
+            ensure_secrets(secrets_path, DB_PASSWORD_KEYS, out=sys.stderr)
+            return EXIT_OK
+        passwords = load_secrets(DB_PASSWORD_KEYS, env, secrets_path)
+    except ConfigError as exc:
+        log.error("%s", exc)
+        return EXIT_CONFIG
+    configure_logging(secrets=passwords.values(), stream=sys.stderr, level=level)
+    settings = DatabaseSettings.from_env(env)
+    try:
+        if action == "bootstrap":
+            admin = conninfo(settings, ADMIN_ROLE, passwords[ADMIN_PASSWORD], dbname="postgres")
+            db_migrate.bootstrap(
+                admin,
+                settings,
+                owner_password=passwords[OWNER_PASSWORD],
+                app_password=passwords[APP_PASSWORD],
+            )
+            log.info("roles and database %r ready", settings.name)
+        else:
+            applied = db_migrate.migrate(conninfo(settings, OWNER_ROLE, passwords[OWNER_PASSWORD]))
+            log.info("applied %s", ", ".join(applied) if applied else "nothing: up to date")
+    except db_migrate.MigrationError as exc:
+        log.error("%s", exc)
+        return EXIT_DATABASE
+    except psycopg.Error as exc:
+        log.error("database %s:%s: %s", settings.host, settings.port, str(exc).strip())
+        return EXIT_DATABASE
+    return EXIT_OK
+
+
 def _emit(out: TextIO, kind: str, data: dict[str, Any]) -> None:
     out.write(json.dumps({"type": kind, **data}, ensure_ascii=False) + "\n")
 
@@ -156,6 +216,16 @@ def _arguments() -> argparse.ArgumentParser:
     )
     email.add_argument("--config-dir", type=Path, default=DEFAULT_CONFIG_DIR)
     email.add_argument("-v", "--verbose", action="store_true")
+
+    db = commands.add_parser("db", help="database setup (Docker Compose phase)")
+    db.add_argument(
+        "action",
+        choices=["init-secrets", "bootstrap", "migrate"],
+        help="init-secrets: add missing DB passwords to secrets.env; bootstrap: create roles "
+        "and database (as admin); migrate: apply pending migrations (as owner)",
+    )
+    db.add_argument("--config-dir", type=Path, default=DEFAULT_CONFIG_DIR)
+    db.add_argument("-v", "--verbose", action="store_true")
     return parser
 
 

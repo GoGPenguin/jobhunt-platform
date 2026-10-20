@@ -52,4 +52,7 @@ Run from the repo root. uv manages Python (pinned to an exact version in `apps/j
 - Single test: `uv run --directory apps/jobhunt pytest tests/test_smoke.py::test_package_imports`
 - Add a dependency (only after spec approval): `uv add --directory apps/jobhunt <pkg>`
 - `make collect-email` (`SINCE=3d`, `EML="a.eml b.eml"`) — dry run of `jobhunt collect email`: reads the Gmail label read-only (or local .eml files) and prints jobs as JSON lines; config in `~/.config/jobhunt/`
-- `make up` / `make down` arrive with Docker Compose in the collector-runtime spec.
+- `make db-up` / `make db-down` — Postgres 18 + pgvector in Docker Compose (127.0.0.1 only); `db-up` first generates missing DB passwords into `secrets.env` (never type them)
+- `make db-migrate` — `jobhunt db bootstrap` (roles, database; as admin) then `jobhunt db migrate` (SQL files in `jobhunt/store/migrations/`, as `jobhunt_owner`). The app connects as `jobhunt_app` (rows only, no DDL)
+- `make test-db` — store tests against a throwaway Postgres (port 55432, in memory, removed afterwards); CI runs them via a service container. Without `JOBHUNT_TEST_DATABASE_ADMIN_URL`, Postgres tests are skipped
+- `make up` / `make down` for the whole stack arrive with the collector-runtime spec.
