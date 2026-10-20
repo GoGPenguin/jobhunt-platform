@@ -69,8 +69,8 @@ dead_letters      (id PK, source, raw_ref, parser_name, parser_version, errors j
 
 1. Raw payload: insert; an existing `raw_ref` is left as is.
 2. Each job: insert, or update on `(source, external_id)`:
-   - `first_seen_at` never changes; `last_seen_at` becomes the later of the stored and new `collected_at`.
-   - `data` is replaced only if the new parser version is the same or newer (semver), so an old version running during a rollout can't overwrite newer output. `updated_at` changes only when `data` actually changes.
+   - `first_seen_at` only ever moves earlier (an older sighting can arrive late) and `last_seen_at` only later; both come from the job's `collected_at`.
+   - `data` is replaced only if the new parser version is the same or newer (semver), so an old version running during a rollout can't overwrite newer output. `updated_at` changes only when the content changes; `collected_at`, `raw_ref` and `parser` don't count as content, so a repeat sighting is `unchanged` and keeps the first sighting's data.
    - Reported per job as `new`, `updated` or `unchanged`.
 3. Dead letters: appended.
 
@@ -83,7 +83,7 @@ A **posting** is the set of stored jobs with the same fingerprint and no conflic
 - **Fingerprint:** SHA-256 of `normalize(company) | normalize(title)`.
   - **Normalize:** NFC, case-folded, Vietnamese and other diacritics removed ("Đà Nẵng" → "da nang"), punctuation turned into spaces, whitespace collapsed.
   - **Company also drops legal suffixes:** TNHH, JSC, Co., Ltd., Company Limited, Pte. Ltd., Inc., Corp., GmbH, and similar.
-- **Countries:** two jobs with the same fingerprint but different *known* countries (VN and JP) are separate postings. A job without a country joins a posting with one. LinkedIn alerts often name only a city.
+- **Countries:** two jobs with the same fingerprint but different *known* countries (VN and JP) are separate postings. A job without a country (LinkedIn alerts often name only a city) joins only if exactly one country group exists; with several it stays its own posting rather than being guessed into one (decided 2026-10-20).
 - **What a posting is when read:** its earliest `first_seen_at`, plus a representative job, which is the one with a description, else the earliest seen.
 - Fuzzy matching (abbreviations, reordered words) comes with the matcher spec; the fingerprint stays as its first, cheap step.
 
