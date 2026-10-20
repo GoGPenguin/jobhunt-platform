@@ -33,9 +33,9 @@ The spec is delivered in four phases, each with its own plan. Phase A comes firs
 
 | Phase | Delivers | Acceptance criteria |
 | ----- | -------- | ------------------- |
-| A | Framework core (source model, `sources.yaml` + schema, parser registry, secrets loading), `imap_email` transport for the Gmail label, LinkedIn and ITviec email parsers | F1, F4, F5, F6 (LinkedIn, ITviec), F11 |
+| A | Framework core (source model, `sources.yaml` + schema, parser registry, secrets loading), `imap_email` transport for the Gmail label, LinkedIn email parser | F1, F4, F5, F6 (LinkedIn), F11 |
 | B | `http_json` transport, politeness layer with the LinkedIn hard deny, Greenhouse, Lever and Ashby families | F2, F3, F7, F8 |
-| C | TopCV, VietnamWorks, TopDev, Glints, JobStreet email parsers | F6 (rest) |
+| C | ITviec, TopCV, VietnamWorks, TopDev, Glints, JobStreet email parsers, each once samples exist | F6 (rest) |
 | D | Description enrichment: `html_page`, page parsers, ATS probe, manual paste | F9, F10 |
 
 Phase A makes no HTTP requests at all: links in alert emails are parsed, never followed. The overview's MVP criteria AC1 and AC3 also need a company-board family, so the MVP is complete after phase B.
