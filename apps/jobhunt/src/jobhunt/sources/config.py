@@ -33,6 +33,13 @@ class ImapSettings(_Config):
     host: str = "imap.gmail.com"
     port: int = 993
     label: Annotated[str, Field(min_length=1, description="Gmail label holding alert emails")]
+    trusted_authserv_id: Annotated[
+        str,
+        Field(
+            min_length=1,
+            description="Server whose Authentication-Results header is trusted for DKIM",
+        ),
+    ] = "mx.google.com"
 
 
 class EmailSource(_Config):

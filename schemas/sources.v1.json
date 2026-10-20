@@ -105,6 +105,13 @@
           "minLength": 1,
           "title": "Label",
           "type": "string"
+        },
+        "trusted_authserv_id": {
+          "default": "mx.google.com",
+          "description": "Server whose Authentication-Results header is trusted for DKIM",
+          "minLength": 1,
+          "title": "Trusted Authserv Id",
+          "type": "string"
         }
       },
       "required": [
