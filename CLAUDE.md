@@ -51,4 +51,5 @@ Run from the repo root. uv manages Python (pinned to an exact version in `apps/j
 - Fixtures are public: fictional content only. `tests/test_fixture_privacy.py` fails on tokens, non-example email addresses, and personal strings listed in the private `~/.config/jobhunt/privacy-scan.txt`
 - Single test: `uv run --directory apps/jobhunt pytest tests/test_smoke.py::test_package_imports`
 - Add a dependency (only after spec approval): `uv add --directory apps/jobhunt <pkg>`
+- `make collect-email` (`SINCE=3d`, `EML="a.eml b.eml"`) — dry run of `jobhunt collect email`: reads the Gmail label read-only (or local .eml files) and prints jobs as JSON lines; config in `~/.config/jobhunt/`
 - `make up` / `make down` arrive with Docker Compose in the collector-runtime spec.

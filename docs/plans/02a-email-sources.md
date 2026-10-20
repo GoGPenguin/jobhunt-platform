@@ -1,7 +1,7 @@
 # Plan 02A: Email sources (Gmail, LinkedIn)
 
 Spec: [02-source-framework](../spec/02-source-framework.md), phase A
-Status: approved 2026-10-20
+Status: tasks 1–7 done 2026-10-20; manual IMAP check pending (needs the Gmail app password)
 
 ## Goal
 
