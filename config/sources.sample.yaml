@@ -1,0 +1,18 @@
+# Sample source configuration. Copy to ~/.config/jobhunt/sources.yaml and edit.
+# Schema: schemas/sources.v1.json. The real file stays private: it shows which
+# companies and alerts you follow.
+schema_version: 1
+
+email:
+  # Alert emails are read from one Gmail label, read-only. Credentials come from
+  # ~/.config/jobhunt/secrets.env (JOBHUNT_IMAP_USER, JOBHUNT_IMAP_APP_PASSWORD).
+  imap:
+    host: imap.gmail.com
+    label: jobhunt
+  schedule: "*/30 * * * *"
+  sources:
+    - id: linkedin-email
+      parser: linkedin-email
+      from: ["@linkedin.com"]
+      page_fetch: forbidden
+      reason: LinkedIn prohibits automated access (robots.txt, User Agreement)

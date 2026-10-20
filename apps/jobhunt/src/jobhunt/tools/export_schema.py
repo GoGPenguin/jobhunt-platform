@@ -1,7 +1,8 @@
 """Write or check the committed JSON Schemas in schemas/.
 
-The schemas describe the stored/output shape of each model and are the contract other
-components read. `make schema` writes them; `make check` fails if they are stale.
+The schemas are the contract other components and people read: stored data in its output
+shape, config files in their input shape. `make schema` writes them; `make check` fails if
+they are stale.
 
     python -m jobhunt.tools.export_schema --out ../../schemas [--check]
 """
@@ -11,24 +12,29 @@ import json
 import sys
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel
 
 from jobhunt.domain.dead_letter import DeadLetter
 from jobhunt.domain.job import Job
+from jobhunt.sources.config import SourcesConfig
 
 JSON_SCHEMA_DIALECT = "https://json-schema.org/draft/2020-12/schema"
-SCHEMAS: dict[str, type[BaseModel]] = {
-    "job.v1.json": Job,
-    "dead_letter.v1.json": DeadLetter,
+# Stored data is described as serialized (every field present); config people write is
+# described as input (defaults optional, YAML key names).
+SCHEMAS: dict[str, tuple[type[BaseModel], Literal["serialization", "validation"]]] = {
+    "job.v1.json": (Job, "serialization"),
+    "dead_letter.v1.json": (DeadLetter, "serialization"),
+    "sources.v1.json": (SourcesConfig, "validation"),
 }
 
 
 def render_schemas() -> dict[str, str]:
     """File name -> schema text, exactly as committed."""
     rendered = {}
-    for name, model in SCHEMAS.items():
-        schema = {"$schema": JSON_SCHEMA_DIALECT, **model.model_json_schema(mode="serialization")}
+    for name, (model, mode) in SCHEMAS.items():
+        schema = {"$schema": JSON_SCHEMA_DIALECT, **model.model_json_schema(mode=mode)}
         rendered[name] = json.dumps(schema, indent=2, ensure_ascii=False) + "\n"
     return rendered
 

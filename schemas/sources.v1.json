@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "EmailSection": {
+      "additionalProperties": false,
+      "properties": {
+        "imap": {
+          "$ref": "#/$defs/ImapSettings"
+        },
+        "schedule": {
+          "default": "*/30 * * * *",
+          "description": "Cron expression with five fields",
+          "pattern": "^\\S+( \\S+){4}$",
+          "title": "Schedule",
+          "type": "string"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/EmailSource"
+          },
+          "title": "Sources",
+          "type": "array"
+        }
+      },
+      "required": [
+        "imap",
+        "sources"
+      ],
+      "title": "EmailSection",
+      "type": "object"
+    },
+    "EmailSource": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9:_-]{0,99}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "parser": {
+          "pattern": "^[a-z0-9][a-z0-9:_-]{0,99}$",
+          "title": "Parser",
+          "type": "string"
+        },
+        "from": {
+          "items": {
+            "description": "Sender domain, e.g. @linkedin.com",
+            "pattern": "^@([a-z0-9-]+\\.)+[a-z]{2,}$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "From",
+          "type": "array"
+        },
+        "page_fetch": {
+          "enum": [
+            "allowed",
+            "forbidden"
+          ],
+          "title": "Page Fetch",
+          "type": "string"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "parser",
+        "from",
+        "page_fetch"
+      ],
+      "title": "EmailSource",
+      "type": "object"
+    },
+    "ImapSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "host": {
+          "default": "imap.gmail.com",
+          "title": "Host",
+          "type": "string"
+        },
+        "port": {
+          "default": 993,
+          "title": "Port",
+          "type": "integer"
+        },
+        "label": {
+          "description": "Gmail label holding alert emails",
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "title": "ImapSettings",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "email": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/EmailSection"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "schema_version"
+  ],
+  "title": "SourcesConfig",
+  "type": "object"
+}

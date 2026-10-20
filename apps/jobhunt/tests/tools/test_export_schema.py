@@ -7,8 +7,16 @@ from jobhunt.domain.job import Job
 from jobhunt.tools.export_schema import main, render_schemas
 
 
-def test_renders_job_and_dead_letter_schemas() -> None:
-    assert set(render_schemas()) == {"job.v1.json", "dead_letter.v1.json"}
+def test_renders_all_schemas() -> None:
+    assert set(render_schemas()) == {"job.v1.json", "dead_letter.v1.json", "sources.v1.json"}
+
+
+def test_sources_schema_is_input_shape() -> None:
+    schema = json.loads(render_schemas()["sources.v1.json"])
+    source = schema["$defs"]["EmailSource"]
+    # Config is written by people: the YAML key is "from", and defaults stay optional.
+    assert "from" in source["properties"]
+    assert "enabled" not in source["required"]
 
 
 def test_job_schema_is_stored_shape() -> None:
@@ -43,7 +51,11 @@ def test_rendering_is_deterministic() -> None:
 
 def test_write_then_check_passes(tmp_path: Path) -> None:
     assert main(["--out", str(tmp_path)]) == 0
-    assert sorted(p.name for p in tmp_path.iterdir()) == ["dead_letter.v1.json", "job.v1.json"]
+    assert sorted(p.name for p in tmp_path.iterdir()) == [
+        "dead_letter.v1.json",
+        "job.v1.json",
+        "sources.v1.json",
+    ]
     assert main(["--out", str(tmp_path), "--check"]) == 0
 
 
