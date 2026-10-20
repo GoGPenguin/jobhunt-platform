@@ -11,7 +11,7 @@ import pytest
 from jobhunt.domain.dead_letter import BuildResult, build_jobs
 from jobhunt.domain.job import ParserInfo
 from jobhunt.sources.raw import RawPayload
-from jobhunt.store.port import JobStore
+from jobhunt.store.port import CollectionRun, DigestBusyError, JobStore
 
 FIXTURE = Path(__file__).parent.parent / "fixtures" / "jobs" / "greenhouse_style.json"
 T0 = datetime(2026, 10, 18, 1, 0, tzinfo=UTC)
@@ -243,3 +243,73 @@ def test_prune_raw_keeps_jobs(store: JobStore) -> None:
     kept = store.get_job("test-source", "from-old")
     assert kept is not None
     assert kept.job.raw_ref == old.raw_ref  # reference kept, payload gone
+
+
+# Notifications and collection runs (spec 05)
+
+
+def store_jobs(
+    store: JobStore, n: int, *records: dict[str, Any], source: str = "test-source"
+) -> None:
+    raw = payload(n)
+    store.store(raw, build_jobs(records, source=source, parser=V1, raw_ref=raw.raw_ref))
+
+
+def test_unsent_postings_then_mark_sent(store: JobStore) -> None:
+    store_jobs(store, 1,
+        record(external_id="a", title="Job A", collected_at=at(T0)),
+        record(external_id="b", title="Job B", collected_at=at(T0 + timedelta(hours=1))),
+    )  # fmt: skip
+    unsent = store.unsent_postings()
+    assert [p.representative.job.external_id for p in unsent] == ["b", "a"]  # newest first
+    digest_id = store.mark_sent(unsent, sent_at=T0 + timedelta(days=1), telegram_message_ids=[7])
+    assert digest_id > 0
+    assert store.unsent_postings() == []
+
+
+def test_joining_job_does_not_revive_a_sent_posting(store: JobStore) -> None:
+    store_jobs(store, 1, record(external_id="first"))
+    store.mark_sent(store.unsent_postings(), sent_at=T0, telegram_message_ids=[1])
+    store_jobs(store, 2, record(external_id="second"), source="another-source")
+    assert store.unsent_postings() == []
+
+
+def test_mark_sent_twice_is_harmless(store: JobStore) -> None:
+    store_jobs(store, 1, record(external_id="a"))
+    unsent = store.unsent_postings()
+    store.mark_sent(unsent, sent_at=T0, telegram_message_ids=[1])
+    store.mark_sent(unsent, sent_at=T0, telegram_message_ids=[2])
+    assert store.unsent_postings() == []
+
+
+def test_postings_since_with_sent_flag(store: JobStore) -> None:
+    store_jobs(store, 1,
+        record(external_id="sent", title="Sent Job", collected_at=at(T0)),
+        record(external_id="new", title="New Job", collected_at=at(T0 + timedelta(hours=2))),
+    )  # fmt: skip
+    sent = [p for p in store.unsent_postings() if p.representative.job.external_id == "sent"]
+    store.mark_sent(sent, sent_at=T0, telegram_message_ids=[1])
+    listed = store.postings_since(T0 - timedelta(days=1))
+    assert [(p.representative.job.external_id, was_sent) for p, was_sent in listed] == [
+        ("new", False),
+        ("sent", True),
+    ]
+
+
+def test_digest_lock_is_exclusive(store: JobStore) -> None:
+    with store.digest_lock(), pytest.raises(DigestBusyError), store.digest_lock():
+        pass
+    with store.digest_lock():  # released again
+        pass
+
+
+def test_collection_runs(store: JobStore) -> None:
+    assert store.last_collection_run() is None
+    ok = CollectionRun(started_at=T0, finished_at=T0 + timedelta(seconds=5), ok=True,
+                       summary={"emails": 4, "new": 19}, error=None)  # fmt: skip
+    failed = CollectionRun(started_at=T0 + timedelta(hours=1),
+                           finished_at=T0 + timedelta(hours=1, seconds=2), ok=False, summary={},
+                           error="IMAP login failed")  # fmt: skip
+    store.record_collection_run(ok)
+    store.record_collection_run(failed)
+    assert store.last_collection_run() == failed

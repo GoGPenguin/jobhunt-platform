@@ -31,7 +31,7 @@ from jobhunt.sources.imap import ImapClient, TransportError, connect_ssl, fetch_
 from jobhunt.sources.raw import RawPayload
 from jobhunt.sources.registry import REGISTRY
 from jobhunt.store import migrate as db_migrate
-from jobhunt.store.port import JobStore
+from jobhunt.store.port import CollectionRun, JobStore
 from jobhunt.store.postgres import PostgresJobStore
 from jobhunt.store.settings import (
     ADMIN_PASSWORD,
@@ -122,6 +122,12 @@ class _Run:
         self._redacted += secrets
         configure_logging(secrets=self._redacted, stream=sys.stderr, level=self.level)
 
+    def scrub(self, text: str) -> str:
+        """`text` with every known secret replaced, for errors stored in the database."""
+        for secret in self._redacted:
+            text = text.replace(secret, "***")
+        return text
+
     def email_config(self) -> tuple[EmailSection, frozenset[str] | None]:
         sources = self.config_dir / "sources.yaml"
         config = load_sources(sources, known_parsers=REGISTRY.names())
@@ -157,9 +163,18 @@ class _Run:
             )
             return EXIT_OK
         with self.open_store(self.app_conninfo()) as store:
-            process_payloads(
-                payloads(store), email, accepted=accepted, now=self.now, out=sys.stdout, store=store
-            )
+            started = self.now()
+            try:
+                summary = process_payloads(
+                    payloads(store), email, accepted=accepted, now=self.now, out=sys.stdout,
+                    store=store,
+                )  # fmt: skip
+            except Exception as exc:
+                failed = CollectionRun(started, self.now(), ok=False, error=self.scrub(str(exc)))
+                store.record_collection_run(failed)
+                raise
+            succeeded = CollectionRun(started, self.now(), ok=True, summary=summary)
+            store.record_collection_run(succeeded)
         return EXIT_OK
 
     def reparse(self) -> int:

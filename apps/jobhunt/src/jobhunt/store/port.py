@@ -8,10 +8,11 @@ cannot drift apart. See spec 04 and decision 0017.
 import hashlib
 import json
 from collections import Counter, defaultdict
-from collections.abc import Iterable, Iterator, Mapping
-from dataclasses import dataclass, replace
+from collections.abc import Iterable, Iterator, Mapping, Sequence
+from contextlib import AbstractContextManager
+from dataclasses import dataclass, field, replace
 from datetime import datetime
-from typing import Literal, Protocol
+from typing import Any, Literal, Protocol
 
 from jobhunt.domain.dead_letter import BuildResult, DeadLetter
 from jobhunt.domain.job import Job, ParserInfo
@@ -71,6 +72,19 @@ class StoreResult:
         return dict(Counter(self.statuses.values()))
 
 
+@dataclass(frozen=True)
+class CollectionRun:
+    started_at: datetime
+    finished_at: datetime
+    ok: bool
+    summary: dict[str, Any] = field(default_factory=dict)
+    error: str | None = None
+
+
+class DigestBusyError(RuntimeError):
+    """Another digest is being composed or sent right now."""
+
+
 class JobStore(Protocol):
     def known_raw_refs(self, raw_refs: Iterable[str]) -> set[str]: ...
     def store(self, payload: RawPayload, result: BuildResult) -> StoreResult:
@@ -91,6 +105,28 @@ class JobStore(Protocol):
         ...
 
     def dead_letter_count(self) -> int: ...
+
+    # Notifications (spec 05)
+    def unsent_postings(self) -> list[Posting]:
+        """Postings none of whose jobs was in a sent digest, newest first."""
+        ...
+
+    def mark_sent(
+        self, postings: Sequence[Posting], *, sent_at: datetime, telegram_message_ids: Sequence[int]
+    ) -> int:
+        """Record a sent digest and every job of its postings, atomically; returns its id."""
+        ...
+
+    def postings_since(self, since: datetime) -> list[tuple[Posting, bool]]:
+        """Postings first seen after `since`, newest first, with whether they were sent."""
+        ...
+
+    def digest_lock(self) -> AbstractContextManager[None]:
+        """Exclusive while choosing, sending and marking a digest; DigestBusyError if taken."""
+        ...
+
+    def record_collection_run(self, run: CollectionRun) -> None: ...
+    def last_collection_run(self) -> CollectionRun | None: ...
 
 
 def plan_upsert(existing: StoredJob | None, job: Job) -> tuple[StoredJob, JobStatus]:
@@ -149,6 +185,14 @@ def group_postings(jobs: Iterable[StoredJob]) -> list[Posting]:
         groups = [*by_country.items(), *([(frozenset(), no_country)] if no_country else [])]
         postings += [Posting(key, countries, tuple(group)) for countries, group in groups]
     return postings
+
+
+def newest_first(postings: Iterable[Posting]) -> list[Posting]:
+    return sorted(postings, key=lambda p: (p.first_seen_at, p.fingerprint), reverse=True)
+
+
+def is_sent(posting: Posting, notified: set[tuple[str, str]]) -> bool:
+    return any((j.job.source, j.job.external_id) in notified for j in posting.jobs)
 
 
 def select_new(postings: Iterable[Posting], since: datetime) -> list[Posting]:

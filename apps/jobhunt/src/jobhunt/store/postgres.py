@@ -1,7 +1,8 @@
 """Postgres JobStore (psycopg 3). Connects as jobhunt_app. Same contract as MemoryJobStore; the
 upsert and posting rules come from jobhunt.store.port. See spec 04 and plan 04 task 4."""
 
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Sequence
+from contextlib import contextmanager
 from datetime import datetime
 from types import TracebackType
 from typing import Any, Self
@@ -13,15 +14,36 @@ from jobhunt.domain.dead_letter import BuildResult
 from jobhunt.domain.job import Job
 from jobhunt.sources.raw import RawPayload
 from jobhunt.store.port import (
+    CollectionRun,
+    DigestBusyError,
     JobStatus,
     Posting,
     StoredJob,
     StoreResult,
     dead_letter_key,
     group_postings,
+    is_sent,
+    newest_first,
     plan_upsert,
     select_new,
 )
+
+_DIGEST_LOCK_ID = 72_610_002  # pg_advisory_lock key for composing and sending a digest
+# Jobs of every fingerprint that has an unsent job, with whether each job was sent.
+_JOBS_OF_UNSENT_FINGERPRINTS = """
+    SELECT j.data, j.fingerprint, j.first_seen_at, j.last_seen_at, j.updated_at,
+           n.digest_id IS NOT NULL
+    FROM jobs j LEFT JOIN notified_jobs n USING (source, external_id)
+    WHERE j.fingerprint IN (
+        SELECT j2.fingerprint FROM jobs j2 LEFT JOIN notified_jobs n2 USING (source, external_id)
+        WHERE n2.digest_id IS NULL)
+"""
+_JOBS_OF_FINGERPRINTS_SEEN_SINCE = """
+    SELECT j.data, j.fingerprint, j.first_seen_at, j.last_seen_at, j.updated_at,
+           n.digest_id IS NOT NULL
+    FROM jobs j LEFT JOIN notified_jobs n USING (source, external_id)
+    WHERE j.fingerprint IN (SELECT fingerprint FROM jobs WHERE first_seen_at > %s)
+"""
 
 _INSERT_JOB = """
     INSERT INTO jobs (source, external_id, data, fingerprint, language, collected_at, raw_ref,
@@ -46,6 +68,7 @@ class PostgresJobStore:
     """Use as a context manager: `with PostgresJobStore(conninfo) as store: ...`."""
 
     def __init__(self, conninfo: str) -> None:
+        self._conninfo = conninfo
         self._conn = psycopg.connect(conninfo, autocommit=True)
 
     def __enter__(self) -> Self:
@@ -151,6 +174,74 @@ class PostgresJobStore:
     def dead_letter_count(self) -> int:
         row = self._conn.execute("SELECT count(*) FROM dead_letters").fetchone()
         return int(row[0]) if row else 0
+
+    def unsent_postings(self) -> list[Posting]:
+        jobs, notified = self._jobs_with_flags(_JOBS_OF_UNSENT_FINGERPRINTS, ())
+        return newest_first(p for p in group_postings(jobs) if not is_sent(p, notified))
+
+    def mark_sent(
+        self, postings: Sequence[Posting], *, sent_at: datetime, telegram_message_ids: Sequence[int]
+    ) -> int:
+        with self._conn.transaction():
+            row = self._conn.execute(
+                "INSERT INTO digests (sent_at, postings, telegram_message_ids)"
+                " VALUES (%s, %s, %s) RETURNING id",
+                (sent_at, len(postings), Jsonb(list(telegram_message_ids))),
+            ).fetchone()
+            assert row is not None  # noqa: S101 - INSERT ... RETURNING always returns a row
+            digest_id = int(row[0])
+            for posting in postings:
+                for stored in posting.jobs:
+                    self._conn.execute(
+                        "INSERT INTO notified_jobs (source, external_id, digest_id, notified_at)"
+                        " VALUES (%s, %s, %s, %s) ON CONFLICT DO NOTHING",
+                        (stored.job.source, stored.job.external_id, digest_id, sent_at),
+                    )
+        return digest_id
+
+    def postings_since(self, since: datetime) -> list[tuple[Posting, bool]]:
+        jobs, notified = self._jobs_with_flags(_JOBS_OF_FINGERPRINTS_SEEN_SINCE, (since,))
+        return [(p, is_sent(p, notified)) for p in select_new(group_postings(jobs), since)]
+
+    def _jobs_with_flags(
+        self, query: str, params: tuple[Any, ...]
+    ) -> tuple[list[StoredJob], set[tuple[str, str]]]:
+        jobs, notified = [], set()
+        for *row, sent in self._conn.execute(query.encode(), params):
+            stored = _stored(tuple(row))
+            jobs.append(stored)
+            if sent:
+                notified.add((stored.job.source, stored.job.external_id))
+        return jobs, notified
+
+    @contextmanager
+    def digest_lock(self) -> Iterator[None]:
+        # Its own connection: advisory locks are re-entrant within one session.
+        with psycopg.connect(self._conninfo, autocommit=True) as conn:
+            row = conn.execute("SELECT pg_try_advisory_lock(%s)", (_DIGEST_LOCK_ID,)).fetchone()
+            if not row or not row[0]:
+                raise DigestBusyError("another digest is running")
+            try:
+                yield
+            finally:
+                conn.execute("SELECT pg_advisory_unlock(%s)", (_DIGEST_LOCK_ID,))
+
+    def record_collection_run(self, run: CollectionRun) -> None:
+        self._conn.execute(
+            "INSERT INTO collection_runs (started_at, finished_at, ok, summary, error)"
+            " VALUES (%s, %s, %s, %s, %s)",
+            (run.started_at, run.finished_at, run.ok, Jsonb(run.summary), run.error),
+        )
+
+    def last_collection_run(self) -> CollectionRun | None:
+        row = self._conn.execute(
+            "SELECT started_at, finished_at, ok, summary, error FROM collection_runs"
+            " ORDER BY finished_at DESC, id DESC LIMIT 1"
+        ).fetchone()
+        if row is None:
+            return None
+        started_at, finished_at, ok, summary, error = row
+        return CollectionRun(started_at, finished_at, ok, summary, error)
 
 
 def _row(stored: StoredJob) -> dict[str, Any]:

@@ -1,6 +1,8 @@
 """In-memory JobStore for unit tests and dry runs. Same contract as the Postgres store."""
 
-from collections.abc import Iterable, Iterator
+import threading
+from collections.abc import Iterable, Iterator, Sequence
+from contextlib import contextmanager
 from datetime import datetime
 from types import TracebackType
 from typing import Self
@@ -8,12 +10,16 @@ from typing import Self
 from jobhunt.domain.dead_letter import BuildResult, DeadLetter
 from jobhunt.sources.raw import RawPayload
 from jobhunt.store.port import (
+    CollectionRun,
+    DigestBusyError,
     JobStatus,
     Posting,
     StoredJob,
     StoreResult,
     dead_letter_key,
     group_postings,
+    is_sent,
+    newest_first,
     plan_upsert,
     select_new,
 )
@@ -24,6 +30,10 @@ class MemoryJobStore:
         self._raw: dict[str, RawPayload] = {}
         self._jobs: dict[tuple[str, str], StoredJob] = {}
         self._dead: dict[str, DeadLetter] = {}
+        self._notified: dict[tuple[str, str], int] = {}  # job key -> digest id
+        self._digests = 0
+        self._runs: list[CollectionRun] = []
+        self._digest_lock = threading.Lock()
 
     def __enter__(self) -> Self:
         return self
@@ -75,3 +85,38 @@ class MemoryJobStore:
 
     def dead_letter_count(self) -> int:
         return len(self._dead)
+
+    def unsent_postings(self) -> list[Posting]:
+        notified = set(self._notified)
+        postings = group_postings(self._jobs.values())
+        return newest_first(p for p in postings if not is_sent(p, notified))
+
+    def mark_sent(
+        self, postings: Sequence[Posting], *, sent_at: datetime, telegram_message_ids: Sequence[int]
+    ) -> int:
+        self._digests += 1
+        for posting in postings:
+            for stored in posting.jobs:
+                key = (stored.job.source, stored.job.external_id)
+                self._notified.setdefault(key, self._digests)
+        return self._digests
+
+    def postings_since(self, since: datetime) -> list[tuple[Posting, bool]]:
+        notified = set(self._notified)
+        postings = select_new(group_postings(self._jobs.values()), since)
+        return [(p, is_sent(p, notified)) for p in postings]
+
+    @contextmanager
+    def digest_lock(self) -> Iterator[None]:
+        if not self._digest_lock.acquire(blocking=False):
+            raise DigestBusyError("another digest is running")
+        try:
+            yield
+        finally:
+            self._digest_lock.release()
+
+    def record_collection_run(self, run: CollectionRun) -> None:
+        self._runs.append(run)
+
+    def last_collection_run(self) -> CollectionRun | None:
+        return max(self._runs, key=lambda r: r.finished_at, default=None)

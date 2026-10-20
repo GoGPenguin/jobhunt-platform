@@ -264,3 +264,32 @@ def test_database_down_exits_4_without_leaking(config_dir: Path, capsys: Capture
     assert code == 4
     assert "connection refused" in err
     assert "app-secret-123" not in err
+
+
+def test_collect_records_successful_run(
+    config_dir: Path, capsys: Capture, shared_store: MemoryJobStore
+) -> None:
+    run(cmd(config_dir, "--eml", *EMLS, dry_run=False), capsys, **storing(config_dir, shared_store))
+    last = shared_store.last_collection_run()
+    assert last is not None
+    assert last.ok
+    assert last.summary["new"] == 11
+    assert last.started_at == NOW
+
+
+def test_collect_records_failed_run_without_secrets(
+    config_dir: Path, capsys: Capture, shared_store: MemoryJobStore
+) -> None:
+    kwargs = storing(config_dir, shared_store)
+    with (config_dir / "secrets.env").open("a") as f:
+        f.write("JOBHUNT_IMAP_USER=me@example.com\nJOBHUNT_IMAP_APP_PASSWORD=wrong-pass-123\n")
+    code, _, _ = run(
+        cmd(config_dir, dry_run=False), capsys, connect=lambda h, p: FakeImap([]), **kwargs
+    )
+    assert code == 3
+    last = shared_store.last_collection_run()
+    assert last is not None
+    assert not last.ok
+    assert last.error is not None
+    assert "app password" in last.error
+    assert "wrong-pass-123" not in last.error
