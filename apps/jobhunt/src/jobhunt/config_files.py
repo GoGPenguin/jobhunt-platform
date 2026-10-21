@@ -1,5 +1,6 @@
 """Reading the YAML files people edit: sources.yaml, preferences.yaml, master_cv.yaml."""
 
+import re
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -11,8 +12,22 @@ class ConfigError(ValueError):
     """A config file is missing, unreadable or invalid. The message names the file and entry."""
 
 
+_BOOL = "tag:yaml.org,2002:bool"
+
+
 class _StrictLoader(yaml.SafeLoader):
-    """SafeLoader that rejects duplicate keys instead of silently keeping the last one."""
+    """SafeLoader that rejects duplicate keys instead of silently keeping the last one, and
+    follows YAML 1.2 booleans: only true/false. YAML 1.1 also reads yes/no/on/off as booleans,
+    which turns the country code NO (Norway) into false."""
+
+
+_StrictLoader.yaml_implicit_resolvers = {
+    first: [(tag, pattern) for tag, pattern in resolvers if tag != _BOOL]
+    for first, resolvers in yaml.SafeLoader.yaml_implicit_resolvers.items()
+}
+_StrictLoader.add_implicit_resolver(
+    _BOOL, re.compile(r"^(?:true|True|TRUE|false|False|FALSE)$"), list("tTfF")
+)
 
 
 def _construct_mapping(loader: _StrictLoader, node: yaml.MappingNode) -> dict[Any, Any]:

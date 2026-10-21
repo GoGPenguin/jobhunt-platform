@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from jobhunt.config_files import ConfigError
+from jobhunt.config_files import ConfigError, read_yaml_mapping
 from jobhunt.sources.config import SourcesConfig, load_sources
 
 REPO = Path(__file__).resolve().parents[4]
@@ -115,3 +115,9 @@ def test_not_yaml_mapping(tmp_path: Path) -> None:
 def test_missing_file(tmp_path: Path) -> None:
     with pytest.raises(ConfigError, match="not found"):
         load_sources(tmp_path / "nope.yaml", known_parsers=KNOWN)
+
+
+def test_yaml_1_2_booleans_country_code_no_stays_a_string(tmp_path: Path) -> None:
+    # YAML 1.1 reads NO (Norway), yes, on, off as booleans; our files follow YAML 1.2.
+    path = write(tmp_path, "countries: [NO, VN]\nflag: yes\nreal: true\n", "any.yaml")
+    assert read_yaml_mapping(path) == {"countries": ["NO", "VN"], "flag": "yes", "real": True}
