@@ -167,3 +167,28 @@ def test_find_chat(config_dir: Path, capsys: Capture) -> None:
     assert code == 0
     assert lines == [{"type": "chat", "chat_id": "987", "name": "Alex (private)"}]
     assert "JOBHUNT_TELEGRAM_CHAT_ID" in err
+
+
+# Ranking in the digest (spec 07, M9)
+
+
+def test_digest_list_has_score_and_reasons(config_dir: Path, capsys: Capture) -> None:
+    store = collected(config_dir, capsys, MemoryJobStore())
+    args = ["digest", "list", "--since", "7d"]
+    _, lines, _ = run(args, config_dir, capsys, store, FakeTelegram())
+    first = lines[0]
+    assert {"score", "reasons", "flags", "filtered", "sent"} <= set(first)
+    scores = [line["score"] for line in lines if line["type"] == "posting"]
+    assert scores == sorted(scores, reverse=True)  # no flags in this profile: plain score order
+
+
+def test_broken_master_cv_still_sends_with_warning(config_dir: Path, capsys: Capture) -> None:
+    store = collected(config_dir, capsys, MemoryJobStore())
+    (config_dir / "master_cv.yaml").write_text("schema_version: 1\nprofile: [not, a, mapping]\n")
+    telegram = FakeTelegram()
+    code, _, err = run(["digest", "send"], config_dir, capsys, store, telegram)
+    assert code == 0
+    text = telegram.sent[0][1]
+    assert "⚠ Profile invalid (master_cv.yaml)" in text
+    assert "11 new jobs" in text
+    assert "master_cv.yaml" in err

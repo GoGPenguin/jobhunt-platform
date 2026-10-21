@@ -31,11 +31,18 @@ import psycopg
 from jobhunt.config_files import ConfigError
 from jobhunt.credentials import ensure_secrets, imap_credentials, load_secrets
 from jobhunt.logs import configure_logging
+from jobhunt.matching.score import Ranked, rank
 from jobhunt.notify import timer as daily_timer
 from jobhunt.notify.digest import compose
 from jobhunt.notify.telegram import DEFAULT_API_BASE, TelegramClient, TelegramError
 from jobhunt.pipeline import process_payloads
-from jobhunt.profile.load import MASTER_CV, PREFERENCES, load_profile
+from jobhunt.profile.load import (
+    MASTER_CV,
+    PREFERENCES,
+    Profile,
+    load_profile,
+    load_profile_lenient,
+)
 from jobhunt.profile.preferences import load_preferences
 from jobhunt.sources.config import EmailSection, load_sources
 from jobhunt.sources.imap import ImapClient, TransportError, connect_ssl, fetch_emails
@@ -243,9 +250,10 @@ class _Run:
             ) from None
 
     def digest(self, action: str, open_telegram: OpenTelegram) -> int:
-        tz = load_preferences(self.config_dir / PREFERENCES).timezone
+        profile, problems = load_profile_lenient(self.config_dir)
+        tz = profile.preferences.timezone
         if action == "list":
-            return self.digest_list(tz)
+            return self.digest_list(profile)
         telegram, chat = self.telegram(open_telegram), self.chat_id()
         if self.args.test:
             stamp = self.now().astimezone(tz).strftime("%H:%M")
@@ -253,8 +261,9 @@ class _Run:
             telegram.send_message(chat, message)
             return EXIT_OK
         with self.open_store(self.app_conninfo()) as store, store.digest_lock():
-            unsent, last_run = store.unsent_postings(), store.last_collection_run()
-            digest = compose(unsent, last_run, now=self.now(), tz=tz)
+            ranked = rank(store.unsent_postings(), profile)
+            last_run = store.last_collection_run()
+            digest = compose(ranked, last_run, now=self.now(), tz=tz, warnings=problems)
             message_ids = [telegram.send_message(chat, text) for text in digest.messages]
             # Only after Telegram accepted every message: a failed send marks nothing.
             store.mark_sent(digest.postings, sent_at=self.now(), telegram_message_ids=message_ids)
@@ -262,21 +271,15 @@ class _Run:
         sys.stdout.write(json.dumps({"type": "summary", **summary}) + "\n")
         return EXIT_OK
 
-    def digest_list(self, tz: ZoneInfo) -> int:
+    def digest_list(self, profile: Profile) -> int:
+        tz = profile.preferences.timezone
         since = self.now() - parse_days(self.args.since)
         with self.open_store(self.app_conninfo()) as store:
-            for posting, sent in store.postings_since(since):
-                job = posting.representative.job
-                line = {
-                    "type": "posting",
-                    "sent": sent,
-                    "first_seen_at": posting.first_seen_at.astimezone(tz).isoformat(),
-                    "title": job.title,
-                    "company": job.company,
-                    "url": job.url,
-                    "sources": sorted({j.job.source for j in posting.jobs}),
-                }
-                sys.stdout.write(json.dumps(line, ensure_ascii=False) + "\n")
+            listed = store.postings_since(since)
+        sent = {id(posting): was_sent for posting, was_sent in listed}
+        for ranked in rank([posting for posting, _ in listed], profile):
+            line = _listing(ranked, sent[id(ranked.posting)], tz)
+            sys.stdout.write(json.dumps(line, ensure_ascii=False) + "\n")
         return EXIT_OK
 
     def find_chat(self, open_telegram: OpenTelegram) -> int:
@@ -354,6 +357,24 @@ class _Run:
             applied = db_migrate.migrate(owner)
             log.info("applied %s", ", ".join(applied) if applied else "nothing: up to date")
         return EXIT_OK
+
+
+def _listing(ranked: Ranked, sent: bool, tz: ZoneInfo) -> dict[str, object]:
+    posting = ranked.posting
+    job = posting.representative.job
+    return {
+        "type": "posting",
+        "sent": sent,
+        "score": ranked.score,
+        "reasons": list(ranked.reasons),
+        "flags": list(ranked.flags),
+        "filtered": ranked.filtered,
+        "first_seen_at": posting.first_seen_at.astimezone(tz).isoformat(),
+        "title": job.title,
+        "company": job.company,
+        "url": job.url,
+        "sources": sorted({j.job.source for j in posting.jobs}),
+    }
 
 
 def _arguments() -> argparse.ArgumentParser:

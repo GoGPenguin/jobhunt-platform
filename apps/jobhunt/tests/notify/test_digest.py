@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from jobhunt.domain.job import Job, Salary
+from jobhunt.matching.score import Ranked
 from jobhunt.notify.digest import compose, format_salary, telegram_length
 from jobhunt.store.fingerprint import fingerprint
 from jobhunt.store.port import CollectionRun, Posting, StoredJob
@@ -35,8 +36,13 @@ def posting(*jobs: Job, seen: datetime = NOW - timedelta(hours=1)) -> Posting:
     return Posting(stored[0].fingerprint, frozenset(), stored)
 
 
+def ranked(p: Posting, *, flags: tuple[str, ...] = (), filtered: str | None = None) -> Ranked:
+    return Ranked(p, 80, ("title ✓", "vietnam (1st)"), flags, filtered)
+
+
 def text(postings: list[Posting], run: CollectionRun | None = OK_RUN, **kwargs: Any) -> str:
-    return "\n".join(compose(postings, run, now=NOW, tz=HCM, **kwargs).messages)
+    items = [ranked(p) for p in postings]
+    return "\n".join(compose(items, run, now=NOW, tz=HCM, **kwargs).messages)
 
 
 def test_normal_digest() -> None:
@@ -53,10 +59,12 @@ def test_normal_digest() -> None:
         "Collector: last run 11:58, OK (4 emails, 12 new jobs)\n"
         "\n"
         "1. <b>Kỹ sư DevOps (Junior)</b> · Công ty TNHH Phần mềm Sông Hàn\n"
+        "   80 · title ✓ · vietnam (1st)\n"
         "   Đà Nẵng, VN · hybrid · 15–25M VND/month (net)\n"
         "   https://www.linkedin.com/jobs/view/1000000101/  (linkedin-email)\n"
         "\n"
         "2. <b>Site Reliability Engineer</b> · Northwind Cloud\n"
+        "   80 · title ✓ · vietnam (1st)\n"
         "   APAC only · remote\n"
         "   https://remotive.com/remote-jobs/devops/site-reliability-engineer-1987654  (remotive)\n"
         "   Job listing from Remotive"
@@ -101,14 +109,14 @@ def test_multi_source_posting() -> None:
     alert = job(source="linkedin-email", external_id="li-9", description="",
                 url="https://www.linkedin.com/jobs/view/9/")  # fmt: skip
     lines = text([posting(alert, board)]).splitlines()
-    assert lines[5] == (
+    assert lines[6] == (
         "   https://boards.greenhouse.io/lumenrobotics/jobs/4012345  "
         "(greenhouse:lumen-robotics, also on: linkedin-email)"
     )
 
 
 def test_cap_and_more() -> None:
-    many = [posting(job(external_id=str(n), title=f"Job {n}")) for n in range(35)]
+    many = [ranked(posting(job(external_id=str(n), title=f"Job {n}"))) for n in range(35)]
     digest = compose(many, OK_RUN, now=NOW, tz=HCM)
     full = "\n".join(digest.messages)
     assert "30. <b>Job 29</b>" in full
@@ -119,7 +127,7 @@ def test_cap_and_more() -> None:
 
 def test_long_digest_splits_between_postings() -> None:
     long_title = "Platform Engineer " + "x" * 250
-    many = [posting(job(external_id=str(n), title=f"{n} {long_title}")) for n in range(30)]
+    many = [ranked(posting(job(external_id=str(n), title=f"{n} {long_title}"))) for n in range(30)]
     digest = compose(many, OK_RUN, now=NOW, tz=HCM)
     assert len(digest.messages) > 1
     assert all(telegram_length(m) <= 4096 for m in digest.messages)
@@ -160,3 +168,42 @@ def test_format_salary(salary: dict[str, Any], shown: str) -> None:
 def test_decimal_noise_is_trimmed() -> None:
     salary = Salary(min=Decimal("1500.00"), currency="USD", period="month", basis="net")
     assert format_salary(salary) == "from 1,500 USD/month (net)"
+
+
+# Ranking (spec 07, M9)
+
+
+def test_filtered_postings_are_counted_not_shown_but_marked() -> None:
+    kept = ranked(posting(job(title="Platform Engineer")))
+    fabrikam = posting(job(title="Sales Ops", company="Fabrikam"))
+    dropped = ranked(fabrikam, filtered="excluded company")
+    digest = compose([kept, dropped], OK_RUN, now=NOW, tz=HCM)
+    full = "\n".join(digest.messages)
+    assert full.startswith("<b>JobHunt</b> · 1 new job · Wed 21 Oct · 1 filtered out\n")
+    assert "Fabrikam" not in full
+    assert [p.representative.job.company for p in digest.postings] == ["Lumen Robotics", "Fabrikam"]
+
+
+def test_only_filtered_postings() -> None:
+    dropped = ranked(posting(job(company="Fabrikam")), filtered="excluded company")
+    first = compose([dropped], OK_RUN, now=NOW, tz=HCM).messages[0].splitlines()[0]
+    assert first == "<b>JobHunt</b> · no new jobs · Wed 21 Oct · 1 filtered out"
+
+
+def test_flags_are_shown_on_the_reasons_line() -> None:
+    flagged = ranked(posting(job()), flags=("excluded: sales", "below minimum salary"))
+    reasons = "\n".join(compose([flagged], OK_RUN, now=NOW, tz=HCM).messages).splitlines()[4]
+    assert reasons == "   80 · title ✓ · vietnam (1st) · (excluded: sales) · (below minimum salary)"
+
+
+def test_order_is_kept_as_ranked() -> None:
+    first, second = posting(job(title="B Job")), posting(job(title="A Job", external_id="2"))
+    full = "\n".join(compose([ranked(first), ranked(second)], OK_RUN, now=NOW, tz=HCM).messages)
+    assert full.index("B Job") < full.index("A Job")
+
+
+def test_profile_warning_line() -> None:
+    digest = compose([], OK_RUN, now=NOW, tz=HCM, warnings=["master_cv.yaml"])
+    assert digest.messages[0].splitlines()[2] == (
+        "⚠ Profile invalid (master_cv.yaml): ranked without it; run jobhunt profile check"
+    )

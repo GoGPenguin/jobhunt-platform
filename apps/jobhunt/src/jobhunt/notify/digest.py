@@ -13,6 +13,7 @@ from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 from jobhunt.domain.job import Job, Salary
+from jobhunt.matching.score import Ranked
 from jobhunt.store.port import CollectionRun, Posting
 
 MESSAGE_LIMIT = 4096
@@ -26,25 +27,34 @@ _MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct",
 @dataclass(frozen=True)
 class Digest:
     messages: list[str]
-    postings: list[Posting]  # everything included, shown or counted in "and N more"
+    postings: list[Posting]  # everything to mark as sent: shown, "and N more", filtered out
 
 
 def compose(
-    postings: Sequence[Posting],
+    ranked: Sequence[Ranked],
     last_run: CollectionRun | None,
     *,
     now: datetime,
     tz: ZoneInfo,
+    warnings: Sequence[str] = (),
     shown: int = SHOWN_POSTINGS,
     limit: int = MESSAGE_LIMIT,
 ) -> Digest:
-    count = len(postings)
+    """`ranked` in the matcher's order (spec 07). Filtered-out postings aren't shown, only
+    counted, but are returned for marking. `warnings` name profile files that failed to load."""
+    visible = [r for r in ranked if r.filtered is None]
+    count, filtered = len(visible), len(ranked) - len(visible)
     headline = f"{count} new job{'s' if count != 1 else ''}" if count else "no new jobs"
-    head = f"<b>JobHunt</b> · {headline} · {_day(now, tz)}\n{_collector_line(last_run, now, tz)}"
-    blocks = [_block(n, p) for n, p in enumerate(postings[:shown], start=1)]
+    head = f"<b>JobHunt</b> · {headline} · {_day(now, tz)}"
+    head += f" · {filtered} filtered out" if filtered else ""
+    head += f"\n{_collector_line(last_run, now, tz)}"
+    if warnings:
+        files = _e(", ".join(warnings))
+        head += f"\n⚠ Profile invalid ({files}): ranked without it; run jobhunt profile check"
+    blocks = [_block(n, r) for n, r in enumerate(visible[:shown], start=1)]
     if count > shown:
         blocks.append(f"… and {count - shown} more (see: jobhunt digest list)")
-    return Digest(messages=_split(head, blocks, limit), postings=list(postings))
+    return Digest(messages=_split(head, blocks, limit), postings=[r.posting for r in ranked])
 
 
 def telegram_length(text: str) -> int:
@@ -77,9 +87,14 @@ def _amount(value: Decimal, millions: bool) -> str:
     return f"{value:,f}"
 
 
-def _block(number: int, posting: Posting) -> str:
+def _block(number: int, ranked: Ranked) -> str:
+    posting = ranked.posting
     job = posting.representative.job
-    lines = [f"{number}. <b>{_e(job.title)}</b> · {_e(job.company)}"]
+    why = [*ranked.reasons, *(f"({flag})" for flag in ranked.flags)]
+    lines = [
+        f"{number}. <b>{_e(job.title)}</b> · {_e(job.company)}",
+        "   " + _e(" · ".join([str(ranked.score), *why])),
+    ]
     details = [part for part in (_location(job), _workplace(job), _salary(job)) if part]
     if details:
         lines.append("   " + " · ".join(_e(part) for part in details))

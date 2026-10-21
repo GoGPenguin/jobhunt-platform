@@ -9,7 +9,7 @@ import pytest
 import yaml
 
 from jobhunt.config_files import ConfigError
-from jobhunt.profile.load import load_profile
+from jobhunt.profile.load import load_profile, load_profile_lenient
 from jobhunt.profile.preferences import Preferences, load_preferences
 
 REPO = Path(__file__).resolve().parents[4]
@@ -132,3 +132,19 @@ def test_invalid_additions(
 ) -> None:
     with pytest.raises(ConfigError, match=message):
         changed(tmp_path, change)
+
+
+def test_load_profile_lenient_reports_broken_files(tmp_path: Path) -> None:
+    (tmp_path / "master_cv.yaml").write_text("schema_version: 1\nprofile: [broken]\n")
+    (tmp_path / "preferences.yaml").write_text("schema_version: 1\nmarkets: nope\n")
+    profile, problems = load_profile_lenient(tmp_path)
+    assert problems == ["master_cv.yaml", "preferences.yaml"]
+    assert profile.master_cv is None
+    assert profile.preferences == Preferences()  # defaults
+
+
+def test_load_profile_lenient_without_problems(tmp_path: Path) -> None:
+    (tmp_path / "preferences.yaml").write_text(SAMPLE.read_text(encoding="utf-8"))
+    profile, problems = load_profile_lenient(tmp_path)
+    assert problems == []
+    assert profile.preferences.accepted_languages == frozenset({"vi", "en"})
