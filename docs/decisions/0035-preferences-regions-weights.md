@@ -11,6 +11,6 @@ Spec: [07-matcher](../spec/07-matcher.md) (amends spec 06's preferences, still v
 
 ## Verified
 
-- Tests written first (7 new; 532 in total); `make check` passes.
+- Tests written first (8 new; 533 in total); `make check` passes.
 - The user's real profile still validates (no `regions` or `matching` section means the defaults).
 - No new dependencies, cost $0.

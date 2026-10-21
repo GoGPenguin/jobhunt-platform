@@ -68,6 +68,12 @@ class SkillAliases:
         """The skill a name or alias refers to; None if the table doesn't know it."""
         return self._canonical.get(name.strip().casefold())
 
+    def names_of(self, skill: str) -> list[str]:
+        """The skill's name and every alias of it (aliases in lower case), for searching text."""
+        target = self._resolve(skill)
+        aliases = [key for key, name in self._canonical.items() if name.casefold() == target]
+        return [skill, *sorted(set(aliases) - {skill.casefold()})]
+
     def same_skill(self, a: str, b: str) -> bool:
         return self._resolve(a) == self._resolve(b)
 
