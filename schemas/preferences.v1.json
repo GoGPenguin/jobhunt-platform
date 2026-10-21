@@ -177,6 +177,23 @@
       "title": "Market",
       "type": "object"
     },
+    "Matching": {
+      "additionalProperties": false,
+      "properties": {
+        "weights": {
+          "$ref": "#/$defs/Weights",
+          "default": {
+            "title": 30.0,
+            "market": 25.0,
+            "skills": 20.0,
+            "seniority": 15.0,
+            "experience": 10.0
+          }
+        }
+      },
+      "title": "Matching",
+      "type": "object"
+    },
     "MinimumSalary": {
       "additionalProperties": false,
       "properties": {
@@ -277,6 +294,44 @@
       "title": "Targets",
       "type": "object"
     },
+    "Weights": {
+      "additionalProperties": false,
+      "description": "Scoring weights (spec 07). The score is normalized, so they needn't add up to 100.",
+      "properties": {
+        "title": {
+          "default": 30,
+          "minimum": 0,
+          "title": "Title",
+          "type": "number"
+        },
+        "market": {
+          "default": 25,
+          "minimum": 0,
+          "title": "Market",
+          "type": "number"
+        },
+        "skills": {
+          "default": 20,
+          "minimum": 0,
+          "title": "Skills",
+          "type": "number"
+        },
+        "seniority": {
+          "default": 15,
+          "minimum": 0,
+          "title": "Seniority",
+          "type": "number"
+        },
+        "experience": {
+          "default": 10,
+          "minimum": 0,
+          "title": "Experience",
+          "type": "number"
+        }
+      },
+      "title": "Weights",
+      "type": "object"
+    },
     "Workplace": {
       "enum": [
         "onsite",
@@ -350,6 +405,33 @@
         "outputs": [
           "en"
         ]
+      }
+    },
+    "regions": {
+      "default": {},
+      "patternProperties": {
+        "^[A-Z][A-Z0-9_]{1,31}$": {
+          "items": {
+            "pattern": "^[A-Z]{2}$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "title": "Regions",
+      "type": "object"
+    },
+    "matching": {
+      "$ref": "#/$defs/Matching",
+      "default": {
+        "weights": {
+          "experience": 10.0,
+          "market": 25.0,
+          "seniority": 15.0,
+          "skills": 20.0,
+          "title": 30.0
+        }
       }
     }
   },

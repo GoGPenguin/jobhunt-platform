@@ -93,3 +93,42 @@ def test_load_profile_without_files(tmp_path: Path) -> None:
     profile = load_profile(tmp_path)
     assert profile.master_cv is None
     assert profile.preferences.accepted_languages is None
+
+
+# Spec 07 additions: regions and matching weights
+
+
+def test_regions_and_weights_from_sample() -> None:
+    prefs = load_preferences(SAMPLE)
+    assert prefs.regions == {"SEA_HUBS": ["SG", "VN", "TH"]}
+    weights = prefs.matching.weights
+    assert (weights.title, weights.market, weights.skills) == (35, 25, 20)  # title overridden
+    assert (weights.seniority, weights.experience) == (15, 10)  # defaults kept
+
+
+def test_defaults_without_matching_section(tmp_path: Path) -> None:
+    path = tmp_path / "preferences.yaml"
+    path.write_text("schema_version: 1\n")
+    weights = load_preferences(path).matching.weights
+    assert weights.model_dump() == {
+        "title": 30, "market": 25, "skills": 20, "seniority": 15, "experience": 10,
+    }  # fmt: skip
+
+
+@pytest.mark.parametrize(
+    ("change", "message"),
+    [
+        (lambda d: d["matching"]["weights"].update(title=-1), r"matching\.weights\.title"),
+        (lambda d: d["matching"]["weights"].update(salary=5), r"matching\.weights\.salary"),
+        (lambda d: d["matching"].update(weights={k: 0 for k in
+            ("title", "market", "skills", "seniority", "experience")}), "at least one weight"),
+        (lambda d: d["regions"].update(SEA_HUBS=["Singapore"]), r"regions\.SEA_HUBS"),
+        (lambda d: d["regions"].update(SEA_HUBS=[]), r"regions\.SEA_HUBS"),
+        (lambda d: d["regions"].update({"sea": ["SG"]}), r"regions"),
+    ],
+)  # fmt: skip
+def test_invalid_additions(
+    tmp_path: Path, change: Callable[[dict[str, Any]], None], message: str
+) -> None:
+    with pytest.raises(ConfigError, match=message):
+        changed(tmp_path, change)

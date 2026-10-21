@@ -83,6 +83,30 @@ class Filters(_Model):
     minimum_salary: list[MinimumSalary] = []
 
 
+Weight = Annotated[float, Field(ge=0)]
+RegionLabel = Annotated[str, Field(pattern=r"^[A-Z][A-Z0-9_]{1,31}$")]
+
+
+class Weights(_Model):
+    """Scoring weights (spec 07). The score is normalized, so they needn't add up to 100."""
+
+    title: Weight = 30
+    market: Weight = 25
+    skills: Weight = 20
+    seniority: Weight = 15
+    experience: Weight = 10
+
+    @model_validator(mode="after")
+    def _not_all_zero(self) -> Self:
+        if not any(self.model_dump().values()):
+            raise ValueError("at least one weight must be above 0")
+        return self
+
+
+class Matching(_Model):
+    weights: Weights = Weights()
+
+
 class Languages(_Model):
     postings: Annotated[list[LanguageCode], Field(min_length=1)] | None = None
     outputs: list[LanguageCode] = ["en"]
@@ -96,6 +120,8 @@ class Preferences(_Model):
     markets: list[Market] = []  # priority order: first = most preferred
     filters: Filters = Filters()
     languages: Languages = Languages()
+    regions: dict[RegionLabel, Annotated[list[CountryCode], Field(min_length=1)]] = {}
+    matching: Matching = Matching()
 
     @model_validator(mode="after")
     def _unique(self) -> Self:

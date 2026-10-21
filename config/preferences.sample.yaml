@@ -39,6 +39,17 @@ filters:
     - { amount: 20000000, currency: VND, period: month }
     - { amount: 30000, currency: USD, period: year }
 
+# Optional: add or redefine region labels (bundled: WORLDWIDE, APAC, ASEAN, EU, EMEA,
+# AMERICAS, LATAM). Values are ISO country codes; NO (Norway) needs no quotes.
+regions:
+  SEA_HUBS: [SG, VN, TH]
+
+# Optional: scoring weights (spec 07). Unlisted ones keep their defaults:
+# title 30, market 25, skills 20, seniority 15, experience 10.
+matching:
+  weights:
+    title: 35
+
 languages:
   postings: [vi, en]
   outputs: [en, vi]
