@@ -68,7 +68,7 @@ The posting's score is its representative job's score (spec 04), which is the on
   - Each entry is a folded name or ASCII name → country, keeping the most populous on a clash (Hanoi → VN).
   - LinkedIn suffixes such as "Capital Region", "Metropolitan Area", "Area" or "Region" are stripped before lookup.
   - The download date and attribution ("GeoNames, CC BY 4.0") are recorded in the data file header and `docs/`.
-- **Regions:** a reviewed `regions.yaml` in the package. Labels: `WORLDWIDE`, `APAC` (East, South-East and South Asia plus Oceania), `ASEAN` (its 10 members), `EU` (the 27 members), `EMEA`, `AMERICAS`, `LATAM`.
+- **Regions:** a reviewed `regions.yaml` in the package. Labels: `WORLDWIDE`, `APAC` (East, South-East and South Asia plus Oceania), `ASEAN` (its 11 members, with Timor-Leste since October 2025), `EU` (the 27 members), `EMEA`, `AMERICAS`, `LATAM`.
   - `preferences.yaml` can add labels or redefine them under `regions:`.
   - Unknown labels in a job count as "not stated".
 - **Preferences additions** (a spec 06 schema change, version 1 stays because both keys are optional):
